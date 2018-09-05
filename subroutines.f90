@@ -124,6 +124,8 @@ endif
 write(Outconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number
 write(Xmat_FILE_NAME,'("OUTPUT/Xmat_",i4.4)') job_number
 write(Vmat_FILE_NAME,'("OUTPUT/Vmat_",i4.4)') job_number
+write(Xmode_FILE_NAME,'("OUTPUT/Xmode_",i4.4)') job_number
+write(Vmode_FILE_NAME,'("OUTPUT/Vmode_",i4.4)') job_number
 end subroutine set_initial
 
 
@@ -179,42 +181,42 @@ end subroutine time_evolution_LeapFrog
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! write matrix to file
-subroutine write_matrix(MAT,F_NUM)
+subroutine write_matrix(MAT,FILE_NUM)
 use global_parameters
 implicit none
 
 complex(kind(0d0)), intent(in) :: MAT(1:NMAT,1:NMAT,1:DIM)
-integer, intent(in) :: F_NUM
+integer, intent(in) :: FILE_NUM
 
 integer m,j,i
 
-write(F_NUM,'(E15.8,2X)',advance='no') time 
+write(FILE_NUM,'(E15.8,2X)',advance='no') time 
 do m=1,dim
   do j=1,NMAT
     do i=1,NMAT
-      write(F_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
+      write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
     enddo
   enddo
 enddo
-write(F_NUM,*)
+write(FILE_NUM,*)
 
 end subroutine write_matrix
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! read matrix from file
-subroutine read_matrix(t, MAT,F_NUM)
+subroutine read_matrix(t, MAT,FILE_NUM)
 use global_parameters
 implicit none
 
 double precision, intent(out) :: t
 complex(kind(0d0)), intent(out) :: MAT(1:NMAT,1:NMAT,1:DIM)
-integer, intent(in) :: F_NUM
+integer, intent(in) :: FILE_NUM
 integer m,j,i
 
 double precision :: VAL(2*NMAT*NMAT*DIM+1)
 
-read(F_NUM,*) VAL
+read(FILE_NUM,*) VAL
 t=VAL(1)
 do m=1,dim
   do j=1,NMAT
@@ -226,9 +228,33 @@ do m=1,dim
   enddo
 enddo
 
-
-
 end subroutine read_matrix
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! write modes to file
+!!  The argument is MATRIX. The subroutine computes modes and 
+!!  write it to the file. 
+subroutine write_modes(MAT,FILE_NUM)
+use global_parameters
+use SUN_generators, only : trace_MTa
+implicit none
+
+complex(kind(0d0)), intent(in) :: MAT(1:NMAT,1:NMAT,1:DIM)
+integer, intent(in) :: FILE_NUM
+complex(kind(0d0)) :: trace
+
+integer m,a
+
+write(FILE_NUM,'(E15.8,2X)',advance='no') time 
+do m=1,dim
+  do a=1,NMAT*NMAT-1
+    call trace_MTa(trace,MAT(:,:,m),a)
+    write(FILE_NUM,'(E12.5,2X)',advance='no') dble(trace)
+  enddo
+enddo
+write(FILE_NUM,*)
+
+end subroutine write_modes
 
 
 end module subroutines

@@ -5,6 +5,7 @@ FLAGS_GCC= -O2
 SRCS=\
      global_parameters.f90 \
      matrix_functions.f90 \
+     SUN_generators.f90 \
      subroutines.f90
 OBJS=$(SRCS:.f90=.o)
 MAIN_SRCS=classicalBFSS.f90
