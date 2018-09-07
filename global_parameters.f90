@@ -7,6 +7,8 @@ integer :: NMAT
 integer, parameter :: DIM=9
 double precision :: time
 
+double precision :: MASS2
+
 
 integer :: Ntau
 

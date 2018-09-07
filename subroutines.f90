@@ -13,6 +13,8 @@ implicit none
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
 
 read(PAR_FILE,*) NMAT
+read(PAR_FILE,*) MASS2
+
 read(PAR_FILE,*) job_number
 read(PAR_FILE,*) new_config
 read(PAR_FILE,*) totalT
@@ -154,6 +156,7 @@ do m=1,DIM
       Amat(:,:,m)=Amat(:,:,m)+tmpmat2
     endif
   enddo
+  Amat(:,:,m)=Amat(:,:,m) - dcmplx( MASS2 )*Xmat(:,:,m)
 enddo
 
 end subroutine calc_force
