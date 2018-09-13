@@ -1,6 +1,7 @@
-2         ! NMAT
+4         ! NMAT
 0d0        ! MASS_SQUARE
 0          ! job_number : 0:previous config, 123: read config_122
 0          ! new_config 0:start from lastconf, 1:new config
-1d3       ! totalT : simulation time
+0          ! write_output  0:write out output, 1:DO NOT write output
+1d2       ! totalT : simulation time
 1d-3       ! deltaT : time step
