@@ -1,33 +1,394 @@
 program calc_correlation
 use global_parameters
 use subroutines
+use matrix_functions 
 implicit none
 
 character(128) :: arg
-complex(kind(0d0)), allocatable :: Xmat(:,:,:)
-complex(kind(0d0)), allocatable :: Vmat(:,:,:)
+character :: op_XVF ! X,V,F
+character :: op_GM ! gauge or matrix
+double precision :: time
+integer :: Num_Lines
+
+character(128) :: DELAY_FILE_NAME
+integer, parameter :: DELAY_FILE=100
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+double precision :: INTERVAL = 10.0d0
+double precision :: DULATION = 0.0d0
+integer :: NUM_INTERVAL
+integer :: NUM_DULATION 
+integer :: NUM_SAMPLES
+integer :: INI1, FIN1, INI2, FIN2
+integer :: counter, traj, k
+
+integer, parameter :: EIGEN=102
+character(128) :: EIGEN_NAME
+complex(kind(0d0)), allocatable :: eigenvalues(:)
+double precision, allocatable :: singularvalues(:)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+complex(kind(0d0)), allocatable :: mode1(:,:)
+complex(kind(0d0)), allocatable :: mode2(:,:)
+complex(kind(0d0)), allocatable :: matrixM(:,:) !(1:matrix_size, 1:matrix_size)
+complex(kind(0d0)), allocatable :: tmp_mat(:,:) !(1:matrix_size, 1:matrix_size)
+complex(kind(0d0)), allocatable :: tmp_vec1(:) ! (1:matrix_size)
+complex(kind(0d0)), allocatable :: tmp_vec2(:) !(1:matrix_size)
+double precision :: rate
+!!!!!!!!!!
 
 
+!! specify the output files
 call getarg(1,arg)
+call getarg(2,op_XVF)
+call getarg(3,op_GM)
 
-Xmat_FILE_NAME="OUTPUT/Xmat_" // arg
-Vmat_FILE_NAME="OUTPUT/Vmat_" // arg
+if( op_XVF == "X" ) then 
+  Xmat_FILE_NAME="OUTPUT/Xmat_" // arg
+elseif( op_XVF == "V" ) then 
+  Xmat_FILE_NAME="OUTPUT/Vmat_" // arg
+elseif( op_XVF == "F" ) then 
+  Xmat_FILE_NAME="OUTPUT/Fmat_" // arg
+else
+  write(*,*) "give me X or V or F"
+  stop
+endif
+!!
+if( op_GM /= "G" .and. op_GM /= "M" ) then
+  write(*,*) "selsect gauge mode (G) or matrix mode (M)"
+  stop
+endif
 
+EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // "_Eigen_" // arg
+DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // "tmp3.dat"
 
-
+!! read theory data from theory_parameters.dat
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
 read(PAR_FILE,*) NMAT
+read(PAR_FILE,*) MASS2
+read(PAR_FILE,*) deltaT
 close(PAR_FILE)
-allocate(XMAT(1:NMAT,1:NMAT,1:DIM))
+
+!! set variables
+if( op_GM == "G" ) then 
+  dimG = NMAT*NMAT-1
+elseif( op_GM == "M" ) then
+  dimG = NMAT*NMAT
+endif
+matrix_size = dimG * DIM
 
 
-open(Xmat_FILE, file=Xmat_FILE_NAME, status='old', action='READ')
-open(Vmat_FILE, file=Vmat_FILE_NAME, status='old', action='READ')
-call read_matrix(time,Xmat,Xmat_FILE)
-call read_matrix(time,Vmat,Vmat_FILE)
+allocate( mode1(1:dimG,1:DIM) )
+allocate( mode2(1:dimG,1:DIM) )
+allocate( eigenvalues(1:matrix_size) )
+allocate( singularvalues(1:matrix_size) )
+allocate( matrixM(1:matrix_size, 1:matrix_size) )
+allocate( tmp_mat(1:matrix_size, 1:matrix_size) )
+allocate( tmp_vec1(1:matrix_size) )
+allocate( tmp_vec2(1:matrix_size) )
 
-write(*,*) Xmat
+
+!! count number of lines
+!!  and
+!! prepare shfted data
+NUM_DULATION = nint( DULATION/deltaT )
+call make_delay_file(Num_Lines, Delay_FILE, Delay_FILE_NAME, &
+  Xmat_FILE, Xmat_FILE_NAME, NUM_DULATION )
+NUM_INTERVAL = nint( INTERVAL/deltaT )
+NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_INTERVAL
+write(*,*) "# number of samples = ", NUM_SAMPLES
+write(*,*) "# number of data = ", NUM_lines
+
+!! open input files
+open(Xmat_FILE,file=Xmat_FILE_NAME,status='old')
+open(Delay_FILE,file=Delay_FILE_NAME,status='old')
+!! open output file
+open(unit=EIGEN, file=EIGEN_NAME, status='replace', action='write')
+
+do traj=1, NUM_SAMPLES
+  tmp_mat=(0d0,0d0)
+  tmp_vec1=(0d0,0d0)
+  tmp_vec2=(0d0,0d0)
+  do k=1, NUM_INTERVAL
+    if( OP_GM == "G" ) then 
+      call read_modes(mode1,Xmat_FILE)
+      call read_modes(mode2,Delay_FILE) 
+    elseif( op_GM =="M" ) then
+      call read_mat(mode1,Xmat_FILE)
+      call read_mat(mode2,Delay_FILE) 
+    endif
+    !write(*,*) mode1
+    !! 
+    if(k==1 .or. k==NUM_INTERVAL) then
+      rate=0.5d0
+    else
+      rate=1d0
+    endif
+    call integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate)
+    !call calc_eigenvalues_of_correlations(eigenvalues,mode1,mode2)
+    !call check_hermitian(tmp_mat)
+  enddo
+  tmp_mat = tmp_mat / interval
+  tmp_vec1 = tmp_vec1 / interval
+  tmp_vec2 = tmp_vec2 / interval
+  !call calc_eigenvalues(eigenvalues, tmp_mat, tmp_vec1, tmp_vec2)
+  call calc_singularvalues(singularvalues, tmp_mat, tmp_vec1, tmp_vec2)
+  write(EIGEN,*) singularvalues
+enddo
 
 close(Xmat_FILE)
+close(Delay_FILE)
+close(EIGEN)
+
 
 end program calc_correlation
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Count number of lines of a given file
+subroutine count_lines(num_lines, NFILE,NFILE_NAME)
+implicit none
+
+integer, intent(out) :: num_lines
+integer, intent(in) :: NFILE
+character(128), intent(in) :: NFILE_NAME
+
+open(NFILE,file=NFILE_NAME,status='old')
+num_lines=0
+
+do 
+  read(NFILE,'()',end=100)
+  num_lines = num_lines + 1
+enddo
+
+100 close(NFILE)
+
+end subroutine count_lines
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine make_delay_file(NLINE, OUT_FILE, OUT_FILE_NAME, IN_FILE, IN_FILE_NAME, num_delay)
+implicit none
+
+integer, intent(out) :: NLINE
+integer, intent(in) :: IN_FILE, OUT_FILE, num_delay
+character(128), intent(in) :: IN_FILE_NAME, OUT_FILE_NAME
+integer,parameter :: max_line_len = 10000
+character(max_line_len) linebuf
+integer :: i
+
+NLINE=0
+open(IN_FILE,file=IN_FILE_NAME,status='old')
+open(unit=OUT_FILE, file=OUT_FILE_NAME, status='replace', action='write')
+
+do i=1,num_delay
+  read(IN_FILE,'()',end=100)
+  NLINE=NLINE+1
+enddo
+
+do 
+  read ( IN_FILE, '(a)', end=100) linebuf
+  NLINE=NLINE+1
+  write( OUT_FILE, '(a)' ) trim(linebuf)
+enddo
+
+100 close(IN_FILE)
+close(OUT_FILE)
+
+
+end subroutine make_delay_file
+
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine make_partial_data(OUT_FILE, OUT_FILE_NAME, INI, FIN, IN_FILE, IN_FILE_NAME)
+implicit none
+
+integer, intent(in) :: INI, FIN
+integer, intent(in) :: IN_FILE, OUT_FILE
+character(128), intent(in) :: IN_FILE_NAME, OUT_FILE_NAME
+
+integer,parameter :: max_line_len = 10000
+character(max_line_len) linebuf
+integer :: i
+
+open(IN_FILE,file=IN_FILE_NAME,status='old')
+open(unit=OUT_FILE, file=OUT_FILE_NAME, status='replace', action='write')
+
+
+do i=1, INI-1
+  read( IN_FILE, '()' )
+enddo
+do i=INI,FIN
+  read ( IN_FILE, '(a)' ) linebuf
+  write( OUT_FILE, '(a)' ) trim(linebuf)
+enddo
+
+close( OUT_FILE )
+close( IN_FILE )
+
+
+end subroutine make_partial_data
+
+!!!!!!!!!!!!!!!!
+subroutine read_modes(mode,NFILE)
+use global_parameters
+use subroutines, only : matrix_to_modes
+use matrix_functions, only :  check_hermitian
+implicit none
+
+complex(kind(0d0)), intent(out) :: mode(1:dimG,1:DIM)
+integer, intent(in) :: NFILE
+
+complex(kind(0d0)) :: mat(1:NMAT,1:NMAT,1:DIM)
+integer :: m,j,i,pos
+double precision :: tm, re(1:2*NMAT*NMAT*DIM)
+
+read(NFILE,*) tm,re
+pos=1
+do m=1,DIM
+  do j=1,NMAT
+    do i=1,NMAT
+      MAT(i,j,m) = dcmplx(re(pos)) + (0d0,1d0)*dcmplx(re(pos+1))
+      pos=pos+2
+    enddo
+  enddo
+enddo
+!do m=1,DIM
+  !call check_hermitian(mat(:,:,m))
+!enddo
+call matrix_to_modes(mode,mat)
+!mode=dble(c_mode)
+end subroutine read_modes
+
+!!!!!!!!!!!!!!!!
+subroutine read_mat(mat,NFILE)
+use global_parameters
+use subroutines, only : matrix_to_modes
+use matrix_functions, only :  check_hermitian
+implicit none
+
+complex(kind(0d0)) :: mat(1:dimG,1:DIM)
+integer, intent(in) :: NFILE
+
+integer :: m,j,i,pos
+double precision :: tm, re(1:2*NMAT*NMAT*DIM)
+
+read(NFILE,*) tm,re
+pos=1
+do m=1,DIM
+  do j=1,NMAT
+    do i=1,NMAT
+      MAT(NMAT*(j-1)+i,m) = dcmplx(re(pos)) + (0d0,1d0)*dcmplx(re(pos+1))
+      pos=pos+2
+    enddo
+  enddo
+enddo
+
+end subroutine read_mat
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate)
+use global_parameters
+implicit none
+complex(kind(0d0)), intent(out) :: tmp_mat(1:matrix_size, 1:matrix_size)
+complex(kind(0d0)), intent(out) :: tmp_vec1(1:matrix_size)
+complex(kind(0d0)), intent(out) :: tmp_vec2(1:matrix_size)
+complex(kind(0d0)), intent(in) :: mode1(1:dimG,1:DIM)
+complex(kind(0d0)), intent(in) :: mode2(1:dimG,1:DIM)
+double precision, intent(in) :: rate
+
+integer :: a,b,m,n
+
+do n=1,DIM
+  do b=1,dimG
+    do m=1,DIM
+      do a=1,dimG
+        tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+          = tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+          !+ mode1(a,m)*mode2(b,n)*dcmplx(deltaT*rate)
+          + dconjg(mode1(a,m))*mode2(b,n)*dcmplx(deltaT*rate)
+      enddo
+    enddo
+  enddo
+enddo
+!!!
+do m=1,DIM
+  do a=1,dimG
+    !tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + mode1(a,m)*deltaT*rate
+    tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + dconjg(mode1(a,m))*deltaT*rate
+    tmp_vec2(dimG*(m-1)+a) = tmp_vec2(dimG*(m-1)+a) + mode2(a,m)*deltaT*rate
+  enddo
+enddo
+
+
+end subroutine integration_step
+
+!!!!!!!!!!!!!!!!!!!!!!
+subroutine calc_eigenvalues(eigenvalues, tmp_mat, tmp_vec1, tmp_vec2)
+use global_parameters
+use matrix_functions, only : matrix_eigenvalues
+implicit none
+
+complex(kind(0d0)), intent(out) :: Eigenvalues(1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_mat(1:matrix_size, 1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_vec1(1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_vec2(1:matrix_size)
+
+complex(kind(0d0)) :: matrixM(1:matrix_size, 1:matrix_size)
+
+integer :: a,b,m,n
+
+do n=1,DIM
+  do b=1,dimG
+    do m=1,DIM
+      do a=1,dimG
+        matrixM(dimG*(m-1)+a, dimG*(n-1)+b) = &
+          tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+          - tmp_vec1(dimG*(m-1)+a) * tmp_vec2(dimG*(n-1)+b)
+      enddo
+    enddo
+  enddo
+enddo
+call matrix_eigenvalues(eigenvalues, matrixM)
+!write(*,*) eigenvalues
+
+
+end subroutine calc_eigenvalues
+
+
+!!!!!!!!!!!!!!!!!!!!!!
+subroutine calc_singularvalues(singularvalues, tmp_mat, tmp_vec1, tmp_vec2)
+use global_parameters
+use matrix_functions, only : matrix_singularvalues
+implicit none
+
+double precision, intent(out) :: singularvalues(1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_mat(1:matrix_size, 1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_vec1(1:matrix_size)
+complex(kind(0d0)), intent(in) :: tmp_vec2(1:matrix_size)
+
+complex(kind(0d0)) :: matrixM(1:matrix_size, 1:matrix_size)
+
+integer :: a,b,m,n
+
+do n=1,DIM
+  do b=1,dimG
+    do m=1,DIM
+      do a=1,dimG
+        matrixM(dimG*(m-1)+a, dimG*(n-1)+b) = &
+          tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+          - tmp_vec1(dimG*(m-1)+a) * tmp_vec2(dimG*(n-1)+b)
+      enddo
+    enddo
+  enddo
+enddo
+call matrix_singularvalues(singularvalues, matrixM)
+!write(*,*) eigenvalues
+
+
+end subroutine calc_singularvalues
+
+!include "calc_eigenvalues_of_correlations.f90"
+
+
+

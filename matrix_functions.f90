@@ -676,9 +676,47 @@ do i=1,NMAT
   endif
  enddo
 enddo
-
-
 end subroutine Matrix_Eigenvalues
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Matrix_Singularvalues
+subroutine Matrix_Singularvalues(sval,MAT)
+implicit none
+
+complex(kind(0d0)), intent(in) :: MAT(:,:)
+double precision, intent(out) :: sval(:) ! size must be max(M,N)
+
+
+!lapack
+character JOBU, JOBVT
+integer M,N,LDA,LDU,LDVT,LWORK,INFO
+integer, allocatable :: IWORK(:)
+double precision :: VL,VU
+double precision, allocatable :: RWORK(:)
+complex(kind(0d0)), allocatable :: A(:,:),VT(:,:),WORK(:)
+complex(kind(0d0)), allocatable :: U(:,:)
+
+
+M=size(MAT,1)
+N=size(MAT,2)
+
+lda = m
+ldu = m
+ldvt = n
+LWORK= 2*N*N
+Allocate (a(m,n), u(ldu,m), VT(ldvt,n), WORK(LWORK), rwork(5*n))
+A=MAT ! This is destoroyed
+
+
+JOBU='N'
+JOBVT='N' 
+
+Call zgesvd(JOBU, JOBVT, m, n, a, lda, sval, u, ldu, vt, ldvt, WORK, lwork, &
+        rwork, info)
+
+
+
+end subroutine Matrix_Singularvalues
 
 !CC    CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 !CC    After C code by Simon Catterall
@@ -1021,36 +1059,38 @@ enddo
 end function tr_MdagM
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!subroutine CalcPfaffian2(abs_pf,arg_pf,MAT)
-!implicit none
-!
-!complex(kind(0d0)) :: PF
-!real(8), intent(out) :: abs_pf, arg_pf
-!complex(kind(0d0)), intent(in) :: MAT(:,:)
-!
-!integer :: NMAT
-!integer, allocatable :: IWORK(:)
-!integer  LWORK, LDA,NB, INFO
-!complex(kind(0d0)), allocatable :: WORK(:)
-!real(8), allocatable :: RWORK(:)
-!real(8) LogPf
-!complex(kind(0d0)) phase
-!
-!NMAT=size(MAT,1)
-!
-!NB = NMAT*NMAT
-!LWORK = NMAT*NB
-!allocate ( IWORK(1:NMAT) )
-!allocate ( RWORK(1:NMAT-1) )
-!allocate ( WORK(LWORK) )
-!LDA = NMAT
-!
-!call ZSKPFA('U','P',NMAT,MAT,LDA,PF, &
-!IWORK,WORK,LWORK,RWORK,INFO)
-!
-!abs_pf=abs(PF)
-!arg_pf=atan2( dble((0d0,-1d0)*PF), dble(PF) )
-!end subroutine CalcPfaffian2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! check if matrix is hermitian
+subroutine check_hermitian(MAT)
+implicit none
+
+complex(kind(0d0)), intent(in) :: MAT(:,:)
+integer :: NMAT,i,j
+double precision :: tmp
+double precision :: epsilon=1d-15
+
+NMAT=size(MAT,1)
+tmp=0d0
+do i=1, NMAT
+  do j=i,NMAT
+    tmp=tmp + dble( &
+      (MAT(i,j) - dconjg( MAT(j,i) )) *  &
+      dconjg( (MAT(i,j) - dconjg( MAT(j,i) )) ) ) 
+  enddo
+enddo
+
+if( tmp < epsilon ) then 
+  write(*,*) "hermitian"
+else
+  write(*,*) "NOT hermitian"
+endif
+      
+end subroutine check_hermitian
+
+
+
+
+
+
 
 end module matrix_functions

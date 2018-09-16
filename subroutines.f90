@@ -11,20 +11,24 @@ implicit none
 
 !!!!! read parameter file !!!!
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
-
-read(PAR_FILE,*) NMAT
-read(PAR_FILE,*) MASS2
-
-read(PAR_FILE,*) job_number
-read(PAR_FILE,*) new_config
-read(PAR_FILE,*) write_output
-read(PAR_FILE,*) totalT
-read(PAR_FILE,*) deltaT
-
+  read(PAR_FILE,*) NMAT
+  read(PAR_FILE,*) MASS2
+  read(PAR_FILE,*) deltaT
 close(PAR_FILE)
+
+open(INPUT_FILE, file=INPUT_FILE_NAME, status='old', action='READ')
+  read(INPUT_FILE,*) job_number
+  read(INPUT_FILE,*) new_config
+  read(INPUT_FILE,*) write_output
+  read(INPUT_FILE,*) totalT
+close(INPUT_FILE)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-NTAU=totalT/deltaT
+NTAU = nint(totalT/deltaT)
+dimG = NMAT*NMAT-1
+matrix_size = dimG * DIM
+
 
 if( job_number == 0 ) then
   Inconf_FILE_NAME="CONFIG/lastconf.dat"
@@ -37,10 +41,11 @@ end subroutine set_parameters
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Initial values
-subroutine set_initial(Xmat,Vmat,Fmat)
+subroutine set_initial(time,Xmat,Vmat,Fmat)
 use global_parameters
 implicit none
 
+double precision :: time
 complex(kind(0d0)), allocatable :: Xmat(:,:,:)
 complex(kind(0d0)), allocatable :: Vmat(:,:,:)
 complex(kind(0d0)), allocatable :: Fmat(:,:,:)
@@ -190,20 +195,28 @@ end subroutine time_evolution_LeapFrog
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! write matrix to file
-subroutine write_matrix(MAT,FILE_NUM)
+subroutine write_matrix(time,MAT,FILE_NUM)
 use global_parameters
 implicit none
 
+double precision, intent(in) :: time
 complex(kind(0d0)), intent(in) :: MAT(1:NMAT,1:NMAT,1:DIM)
 integer, intent(in) :: FILE_NUM
 
 integer m,j,i
 
-write(FILE_NUM,'(E15.8,2X)',advance='no') time 
+character(50) FMT1, FMT2
+
+FMT1="(" // trim(FMT_time) // ",2X)"
+FMT2="(" // trim(FMT_vals) // ",2X," // trim(FMT_vals) // ",2X)"
+
+write(FILE_NUM,FMT1,advance='no') time 
+!write(FILE_NUM,'(E15.8,2X)',advance='no') time 
 do m=1,dim
   do j=1,NMAT
     do i=1,NMAT
-      write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
+      !write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
+      write(FILE_NUM,FMT2,advance='no') MAT(i,j,m)
     enddo
   enddo
 enddo
@@ -223,7 +236,7 @@ complex(kind(0d0)), intent(out) :: MAT(1:NMAT,1:NMAT,1:DIM)
 integer, intent(in) :: FILE_NUM
 integer m,j,i
 
-double precision :: VAL(2*NMAT*NMAT*DIM+1)
+double precision :: VAL(1:2*NMAT*NMAT*DIM+1)
 
 read(FILE_NUM,*) VAL
 t=VAL(1)
@@ -241,39 +254,67 @@ end subroutine read_matrix
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! write modes to file
-!!  The argument is MATRIX. The subroutine computes modes and 
-!!  write it to the file. 
-subroutine write_modes(MAT,FILE_NUM)
+!!  The argument is MATRIX. 
+!! The subroutine computes modes and write it to the file. 
+subroutine matrix_to_modes(modes,MAT)
 use global_parameters
 use SUN_generators, only : trace_MTa
 implicit none
 
 complex(kind(0d0)), intent(in) :: MAT(1:NMAT,1:NMAT,1:DIM)
-integer, intent(in) :: FILE_NUM
-complex(kind(0d0)) :: trace
+complex(kind(0d0)), intent(out) :: modes(1:NMAT*NMAT-1,1:DIM)
+!complex(kind(0d0)) trace
 
 integer m,a
 
-write(FILE_NUM,'(E15.8,2X)',advance='no') time 
+do m=1,dim
+  do a=1,NMAT*NMAT-1
+    call trace_MTa(modes(a,m),MAT(:,:,m),a)
+  enddo
+enddo
+
+end subroutine matrix_to_modes
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! write modes to file
+!!  The argument is MATRIX. 
+!! The subroutine computes modes and write it to the file. 
+subroutine write_modes(time, MAT,FILE_NUM)
+use global_parameters
+use SUN_generators, only : trace_MTa
+implicit none
+
+double precision, intent(in) :: time
+complex(kind(0d0)), intent(in) :: MAT(1:NMAT,1:NMAT,1:DIM)
+integer, intent(in) :: FILE_NUM
+complex(kind(0d0)) :: trace
+
+character(20) :: FMT1, FMT2
+integer m,a
+
+FMT1="(" // FMT_time // ',2X)'
+FMT2='(' // FMT_vals // ',2X)'
+
+write(FILE_NUM,FMT2,advance='no') time 
 do m=1,dim
   do a=1,NMAT*NMAT-1
     call trace_MTa(trace,MAT(:,:,m),a)
-    write(FILE_NUM,'(E12.5,2X)',advance='no') dble(trace)
+    write(FILE_NUM,FMT2,advance='no') dble(trace)
   enddo
 enddo
 write(FILE_NUM,*)
 
 end subroutine write_modes
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Gaussian random number
 !!  BoxMuller(gauss)
 !!
+!! Here gauss has the structure gauss(:,:,:)
 !! generage ensemble exp(-1/2(x^2) and exp(-1/2(y^2))
 !! 
-!! output 2N gaussian randum numbers
-!! gauss is an allocatable array.
-!! It will be reallocated after calling this routine.
+!! output N gaussian randum numbers
 subroutine BoxMuller(gauss)
 implicit none
 
