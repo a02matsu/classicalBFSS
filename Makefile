@@ -60,7 +60,6 @@ subroutines.o: \
   SUN_generators.o \
   matrix_functions.o
   calc_correlation.o: \
-  calc_eigenvalues_of_correlations.f90 \
   matrix_functions.o
 
 .PHONY: clean

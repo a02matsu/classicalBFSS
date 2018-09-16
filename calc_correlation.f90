@@ -7,6 +7,7 @@ implicit none
 character(128) :: arg
 character :: op_XVF ! X,V,F
 character :: op_GM ! gauge or matrix
+character :: op_DN ! <X_i^dagger X_j> or <X_i X_j>
 double precision :: time
 integer :: Num_Lines
 
@@ -41,6 +42,7 @@ double precision :: rate
 call getarg(1,arg)
 call getarg(2,op_XVF)
 call getarg(3,op_GM)
+call getarg(4,op_DN)
 
 if( op_XVF == "X" ) then 
   Xmat_FILE_NAME="OUTPUT/Xmat_" // arg
@@ -58,7 +60,12 @@ if( op_GM /= "G" .and. op_GM /= "M" ) then
   stop
 endif
 
-EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // "_Eigen_" // arg
+if( op_DN /= "D" .and. op_GM /= "N" ) then
+  write(*,*) "Warnning: settig to <X_i^\dagger X_j> mode"
+  op_DN = "D" 
+endif
+
+EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "_SV_" // arg
 DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // "tmp3.dat"
 
 !! read theory data from theory_parameters.dat
@@ -123,7 +130,7 @@ do traj=1, NUM_SAMPLES
     else
       rate=1d0
     endif
-    call integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate)
+    call integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate,op_DN)
     !call calc_eigenvalues_of_correlations(eigenvalues,mode1,mode2)
     !call check_hermitian(tmp_mat)
   enddo
@@ -131,6 +138,7 @@ do traj=1, NUM_SAMPLES
   tmp_vec1 = tmp_vec1 / interval
   tmp_vec2 = tmp_vec2 / interval
   !call calc_eigenvalues(eigenvalues, tmp_mat, tmp_vec1, tmp_vec2)
+  !write(EIGEN,*) dble(eigenvalues)
   call calc_singularvalues(singularvalues, tmp_mat, tmp_vec1, tmp_vec2)
   write(EIGEN,*) singularvalues
 enddo
@@ -138,6 +146,8 @@ enddo
 close(Xmat_FILE)
 close(Delay_FILE)
 close(EIGEN)
+
+call system( '/bin/rm ' // trim(DELAY_FILE_NAME) )
 
 
 end program calc_correlation
@@ -287,7 +297,7 @@ enddo
 end subroutine read_mat
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate)
+subroutine integration_step(tmp_mat,tmp_vec1,tmp_vec2,mode1,mode2,rate,op_DN)
 use global_parameters
 implicit none
 complex(kind(0d0)), intent(out) :: tmp_mat(1:matrix_size, 1:matrix_size)
@@ -296,6 +306,7 @@ complex(kind(0d0)), intent(out) :: tmp_vec2(1:matrix_size)
 complex(kind(0d0)), intent(in) :: mode1(1:dimG,1:DIM)
 complex(kind(0d0)), intent(in) :: mode2(1:dimG,1:DIM)
 double precision, intent(in) :: rate
+character, intent(in) :: op_DN
 
 integer :: a,b,m,n
 
@@ -303,10 +314,15 @@ do n=1,DIM
   do b=1,dimG
     do m=1,DIM
       do a=1,dimG
-        tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+        if( op_DN == "D" ) then 
+          tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
           = tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
-          !+ mode1(a,m)*mode2(b,n)*dcmplx(deltaT*rate)
-          + dconjg(mode1(a,m))*mode2(b,n)*dcmplx(deltaT*rate)
+            + dconjg(mode1(a,m))*mode2(b,n)*dcmplx(deltaT*rate)
+        else
+          tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+          = tmp_mat(dimG*(m-1)+a, dimG*(n-1)+b) &
+            + mode1(a,m)*mode2(b,n)*dcmplx(deltaT*rate)
+        endif
       enddo
     enddo
   enddo
@@ -314,8 +330,11 @@ enddo
 !!!
 do m=1,DIM
   do a=1,dimG
-    !tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + mode1(a,m)*deltaT*rate
-    tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + dconjg(mode1(a,m))*deltaT*rate
+    if( op_DN == "D" ) then 
+      tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + dconjg(mode1(a,m))*deltaT*rate
+    else
+      tmp_vec1(dimG*(m-1)+a) = tmp_vec1(dimG*(m-1)+a) + mode1(a,m)*deltaT*rate
+    endif
     tmp_vec2(dimG*(m-1)+a) = tmp_vec2(dimG*(m-1)+a) + mode2(a,m)*deltaT*rate
   enddo
 enddo
