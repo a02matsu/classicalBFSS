@@ -155,7 +155,7 @@ end subroutine set_initial
 !! Calculate forces
 subroutine calc_force(Fmat,Xmat)
 use global_parameters
-use matrix_functions, only : Matrix_Commutator
+use matrix_functions, only : Matrix_Commutator, make_matrix_hermitian
 implicit none
 
 complex(kind(0d0)), intent(out) :: Fmat(1:NMAT,1:NMAT,1:DIM)
@@ -175,6 +175,7 @@ do m=1,DIM
       Fmat(:,:,m)=Fmat(:,:,m)+tmpmat2
     endif
   enddo
+  call make_matrix_hermitian(Fmat(:,:,m))
 enddo
 
 do m=1,DIM
@@ -238,7 +239,6 @@ Fmat=Fmat2
 do n=1,DIM
   call make_matrix_hermitian(Xmat(:,:,n))
   call make_matrix_hermitian(Vmat(:,:,n))
-  call make_matrix_hermitian(Fmat(:,:,n))
 enddo
 
 end subroutine time_evolution_LeapFrog
