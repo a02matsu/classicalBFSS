@@ -149,6 +149,32 @@ norm=dsqrt(norm/dble(NMAT))
 end subroutine matrix_norm
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! trace( MAT1 . MAT2 )
+!!
+!! default :: char1="N", char2="N"
+!! char1="C", char2="N" : trace( M1^\dagger, M2 ) 
+!! char1="N", char2="C" : trace( M1. M2^dagger ) 
+!! char1="C", char2="N" : trace( M1^\dagger. M2^dagger ) 
+!! 
+subroutine trace_MM(trace,mat1,mat2)
+implicit none
+
+complex(kind(0d0)), intent(out) :: trace
+complex(kind(0d0)), intent(in) :: MAT1(:,:), MAT2(:,:)
+integer :: NMAT
+integer :: i,j
+
+NMAT=size(MAT1,1)
+
+trace=(0d0,0d0)
+do i=1,NMAT
+  do j=1,NMAT
+    trace=trace+MAT1(i,j)*MAT2(j,i)
+  enddo
+enddo
+
+end subroutine trace_MM
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! make unit matrix with a given size
@@ -684,7 +710,7 @@ subroutine Matrix_Singularvalues(sval,MAT)
 implicit none
 
 complex(kind(0d0)), intent(in) :: MAT(:,:)
-double precision, intent(out) :: sval(:) ! size must be max(M,N)
+double precision, intent(out) :: sval(:) !
 
 
 !lapack
@@ -703,7 +729,7 @@ N=size(MAT,2)
 lda = m
 ldu = m
 ldvt = n
-LWORK= 2*N*N
+LWORK= 5*N
 Allocate (a(m,n), u(ldu,m), VT(ldvt,n), WORK(LWORK), rwork(5*n))
 A=MAT ! This is destoroyed
 

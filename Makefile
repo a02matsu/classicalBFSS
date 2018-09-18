@@ -1,6 +1,7 @@
-#FC=ifort
-FC=gfortran
-FLAGS_IFORT= -mkl -CB -traceback -g 
+FC=ifort
+#FC=gfortran
+#FLAGS_IFORT= -mkl -CB -traceback -g 
+FLAGS_IFORT= -mkl -O2
 FLAGS_GCC= -O2 -llapack -lblas 
 # コンパイルのために順番が大事。下層ほど先に書く。 
 SRCS=\

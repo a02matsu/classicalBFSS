@@ -60,7 +60,7 @@ if( op_GM /= "G" .and. op_GM /= "M" ) then
   stop
 endif
 
-if( op_DN /= "D" .and. op_GM /= "N" ) then
+if( op_DN /= "D" .and. op_DN /= "N" ) then
   write(*,*) "Warnning: settig to <X_i^\dagger X_j> mode"
   op_DN = "D" 
 endif

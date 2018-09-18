@@ -21,6 +21,8 @@ open(INPUT_FILE, file=INPUT_FILE_NAME, status='old', action='READ')
   read(INPUT_FILE,*) new_config
   read(INPUT_FILE,*) write_output
   read(INPUT_FILE,*) totalT
+  read(INPUT_FILE,*) check_gauss
+  read(INPUT_FILE,*) check_ham
 close(INPUT_FILE)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -43,6 +45,7 @@ end subroutine set_parameters
 !! Initial values
 subroutine set_initial(time,Xmat,Vmat,Fmat)
 use global_parameters
+use matrix_functions, only : check_hermitian
 implicit none
 
 double precision :: time
@@ -83,6 +86,7 @@ if( new_config == 1 ) then
   !rmat = 2d0*rmat - 1d0
 
   call BoxMuller(rmat)
+  
 
   ! make rmat traceless
   do n=1,DIM
@@ -106,6 +110,7 @@ if( new_config == 1 ) then
     enddo
   enddo
 
+
   !!!!!!!!!!!!!!!!!
   !! TEMPORARY
   !! Vmat must satisry [X_M, V_M]=0 
@@ -128,6 +133,9 @@ else
   read(Inconf_File) Xmat
   read(Inconf_File) Vmat
 
+  do n=1,DIM
+    call check_hermitian(Xmat(:,:,n))
+  enddo
   close(Inconf_FILE)
 endif
 
@@ -167,11 +175,47 @@ do m=1,DIM
       Fmat(:,:,m)=Fmat(:,:,m)+tmpmat2
     endif
   enddo
-  Fmat(:,:,m)=Fmat(:,:,m) - dcmplx( MASS2 )*Xmat(:,:,m)
+enddo
+
+do m=1,DIM
+  Fmat(:,:,m)=Fmat(:,:,m) +  dcmplx( 0.5d0 * MASS2 )*Xmat(:,:,m)
 enddo
 
 end subroutine calc_force
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Hamiltonian 
+subroutine calc_hamiltonian(Ham,Xmat,Vmat)
+use global_parameters
+use matrix_functions, only : matrix_commutator, trace_MM, check_hermitian
+implicit none
+
+complex(kind(0d0)), intent(in) :: Xmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)), intent(in) :: Vmat(1:NMAT,1:NMAT,1:DIM)
+double precision, intent(out) :: Ham
+complex(kind(0d0)) :: tmpmat(1:NMAT,1:NMAT)
+complex(kind(0d0)) :: comm(1:NMAT,1:NMAT)
+complex(kind(0d0)) :: trace
+integer :: M,N
+
+Ham=0d0
+do M=1,DIM
+  call trace_MM(trace,Vmat(:,:,M),Vmat(:,:,M))
+  Ham=Ham+dble(trace)
+enddo
+do M=1,DIM-1
+  do N=M+1,DIM
+    call matrix_commutator(comm,Xmat(:,:,M),Xmat(:,:,N))
+    call trace_MM(trace,comm,comm)
+    Ham = Ham - dble(trace)
+  enddo
+enddo
+do M=1,DIM
+  call trace_MM(trace,Xmat(:,:,M),Xmat(:,:,M))
+  Ham = Ham - 0.5d0 *  MASS2 * dble(trace)
+enddo
+
+end subroutine calc_hamiltonian
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! 2nd order time evolution
@@ -185,7 +229,7 @@ complex(kind(0d0)), intent(inout) :: Fmat(1:NMAT,1:NMAT,1:DIM)
 complex(kind(0d0)) :: Fmat2(1:NMAT,1:NMAT,1:DIM)
 integer n
 
-Xmat = Xmat + deltaT*VMat + dcmplx(0.5d0*deltaT*deltaT)*Fmat
+Xmat = Xmat + dcmplx(deltaT)*VMat + dcmplx(0.5d0*deltaT*deltaT)*Fmat
 
 call calc_force(Fmat2,Xmat)
 Vmat = Vmat + dcmplx(0.5d0*deltaT)*(Fmat+Fmat2)
@@ -362,6 +406,71 @@ enddo
 
 end subroutine BoxMuller
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Check if the solution satisfies Gauss's law constraint
+subroutine check_gauss_law(Xmat,Vmat,time)
+use global_parameters
+use matrix_functions, only : matrix_commutator
+implicit none
+
+complex(kind(0d0)), intent(in) :: Xmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)), intent(in) :: Vmat(1:NMAT,1:NMAT,1:DIM)
+double precision, intent(in) :: time
+complex(kind(0d0)) :: tmpmat1(1:NMAT,1:NMAT)
+complex(kind(0d0)) :: tmpmat2(1:NMAT,1:NMAT)
+double precision :: tmp
+integer :: d,i,j
+
+tmpmat2=(0d0,0d0)
+do d=1,DIM
+  call matrix_commutator(tmpmat1,Xmat(:,:,d),Vmat(:,:,d))
+  tmpmat2=tmpmat2+tmpmat1
+enddo
+
+tmp=0d0
+do j=1,NMAT
+  do i=1,NMAT
+    tmp=tmp+dble( tmpmat2(i,j) * dconjg(tmpmat2(i,j)) )
+  enddo
+enddo
+write(*,*) time, tmp 
+end subroutine check_gauss_law
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Check Hamiltonian conservation
+subroutine check_hamiltonian(Xmat,Vmat)
+use global_parameters
+implicit none
+  
+complex(kind(0d0)), intent(in) :: Xmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)), intent(in) :: Vmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Fmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)):: Xmat_bak(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)):: Vmat_bak(1:NMAT,1:NMAT,1:DIM)
+double precision :: Ham0, Ham1
+integer, parameter :: numite=20 
+double precision, parameter :: Dtau=1d-2
+integer :: NUM
+integer ite,k
+
+do ite=1,numite
+  Xmat_bak=Xmat
+  Vmat_bak=Vmat
+  call calc_hamiltonian(Ham0, Xmat, Vmat)
+  !!!
+  call calc_Force(Fmat,Xmat)
+  NUM=nint( Dtau/deltaT )
+  do k=1,NUM
+    call time_evolution_LeapFrog(Xmat_bak,Vmat_bak,Fmat)
+  enddo
+  !!!
+  call calc_hamiltonian(Ham1, Xmat_bak, Vmat_bak)
+  write(*,*) deltaT, dabs(Ham1-Ham0)
+  deltaT = deltaT/10d0
+enddo
+stop
+end subroutine check_hamiltonian
 
 
 end module subroutines

@@ -3,6 +3,9 @@
 module global_parameters
 implicit none
 
+integer :: check_gauss
+integer :: check_ham
+
 integer :: NMAT
 integer, parameter :: DIM=9
 !double precision :: time
