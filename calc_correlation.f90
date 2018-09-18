@@ -105,6 +105,7 @@ NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_INTERVAL
 write(*,*) "# number of samples = ", NUM_SAMPLES
 write(*,*) "# number of data = ", NUM_lines
 
+
 !! open input files
 open(Xmat_FILE,file=Xmat_FILE_NAME,status='old')
 open(Delay_FILE,file=Delay_FILE_NAME,status='old')

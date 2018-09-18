@@ -221,6 +221,7 @@ end subroutine calc_hamiltonian
 !! 2nd order time evolution
 subroutine time_evolution_LeapFrog(Xmat,Vmat,Fmat)
 use global_parameters
+use matrix_functions, only : make_matrix_hermitian
 implicit none
 
 complex(kind(0d0)), intent(inout) :: Xmat(1:NMAT,1:NMAT,1:DIM)
@@ -234,6 +235,11 @@ Xmat = Xmat + dcmplx(deltaT)*VMat + dcmplx(0.5d0*deltaT*deltaT)*Fmat
 call calc_force(Fmat2,Xmat)
 Vmat = Vmat + dcmplx(0.5d0*deltaT)*(Fmat+Fmat2)
 Fmat=Fmat2
+do n=1,DIM
+  call make_matrix_hermitian(Xmat(:,:,n))
+  call make_matrix_hermitian(Vmat(:,:,n))
+  call make_matrix_hermitian(Fmat(:,:,n))
+enddo
 
 end subroutine time_evolution_LeapFrog
 

@@ -7,6 +7,7 @@
 program main
 use global_parameters
 use subroutines
+use matrix_functions, only : check_hermitian
 implicit none
 
 complex(kind(0d0)), allocatable :: Xmat(:,:,:)

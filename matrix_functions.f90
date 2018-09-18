@@ -1114,7 +1114,27 @@ endif
 end subroutine check_hermitian
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! make the given matrix to hermitian 
+subroutine make_matrix_hermitian(MAT)
+implicit none
 
+complex(kind(0d0)), intent(inout) :: MAT(:,:)
+complex(kind(0d0)), allocatable :: tmpmat(:,:)
+integer :: NMAT,i,j
+
+NMAT=size(MAT,1)
+allocate( tmpmat(1:NMAT,1:NMAT) )
+
+do j=1,NMAT
+  do i=1,NMAT
+    tmpmat(i,j) = (0.5d0,0d0) * dconjg(MAT(j,i))
+  enddo
+enddo
+
+MAT=(0.5d0,0d0)*MAT+tmpmat
+
+end subroutine make_matrix_hermitian
 
 
 
