@@ -127,6 +127,8 @@ if( new_config == 1 ) then
   ratio=E0/E
 
   Vmat=Vmat*dcmplx(dsqrt(ratio))
+  call calc_hamiltonian(E,Xmat,Vmat)
+  write(*,*) "temperature=", E * 4d0/dble(DOF) / 3d0
 
 else
   if( job_number== 0 ) then 

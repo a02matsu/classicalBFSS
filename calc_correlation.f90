@@ -15,9 +15,9 @@ character(128) :: DELAY_FILE_NAME
 integer, parameter :: DELAY_FILE=100
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-double precision :: INTERVAL = 10.0d0
-double precision :: DULATION = 0.0d0
-integer :: NUM_INTERVAL
+double precision, parameter :: Delta = 1.0d0 ! \Delta
+double precision, parameter :: DULATION = 0.0d0 ! t
+integer :: NUM_Delta
 integer :: NUM_DULATION 
 integer :: NUM_SAMPLES
 integer :: INI1, FIN1, INI2, FIN2
@@ -77,6 +77,7 @@ FMT='(' // FMT_vals // ',2X)'
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
 read(PAR_FILE,*) NMAT
 read(PAR_FILE,*) MASS2
+read(PAR_FILE,*) temperature
 read(PAR_FILE,*) deltaT
 close(PAR_FILE)
 
@@ -103,13 +104,14 @@ allocate( tmp_vec2(1:matrix_size) )
 !!  and
 !! prepare shfted data
 NUM_DULATION = nint( DULATION/deltaT )
-NUM_INTERVAL = nint( INTERVAL/deltaT )
+NUM_Delta = nint( Delta/deltaT )
 !call system_clock(t1)
+!write(*,*) NUM_DULATION, NUM_Delta
 call make_delay_file(Num_Lines, Delay_FILE, Delay_FILE_NAME, &
   Xmat_FILE, Xmat_FILE_NAME, NUM_DULATION )
 !call make_delay_file_sys(Num_Lines, Delay_FILE_NAME, &
   !Xmat_FILE_NAME, NUM_DULATION )
-NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_INTERVAL
+NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_Delta
 !call system_clock(t2,t_rate,t_max)
 !if( t2<t1) then
   !write(*,*) dble((t_max-t1) + t2 + 1)/dble(t_rate)
@@ -126,12 +128,12 @@ open(Delay_FILE,file=Delay_FILE_NAME,status='old')
 !! open output file
 open(unit=EIGEN, file=EIGEN_NAME, status='replace', action='write')
 
-write(EIGEN,'(a,I6,2X,a,E10.3,2X,a,E10.3)') "# #(samples) = ", NUM_SAMPLES, "Delta = ", INTERVAL, "t=", DULATION
+write(EIGEN,'(a,I6,2X,a,E10.3,2X,a,E10.3)') "# #(samples) = ", NUM_SAMPLES, "Delta = ", Delta, "t=", DULATION
 do traj=1, NUM_SAMPLES
   tmp_mat=(0d0,0d0)
   tmp_vec1=(0d0,0d0)
   tmp_vec2=(0d0,0d0)
-  do k=1, NUM_INTERVAL
+  do k=1, NUM_Delta
     if( OP_GM == "G" ) then 
       call read_modes(mode1,Xmat_FILE)
       call read_modes(mode2,Delay_FILE) 
@@ -141,7 +143,7 @@ do traj=1, NUM_SAMPLES
     endif
     !write(*,*) mode1
     !! 
-    if(k==1 .or. k==NUM_INTERVAL) then
+    if(k==1 .or. k==NUM_Delta) then
       rate=0.5d0
     else
       rate=1d0
@@ -150,9 +152,9 @@ do traj=1, NUM_SAMPLES
     !call calc_eigenvalues_of_correlations(eigenvalues,mode1,mode2)
     !call check_hermitian(tmp_mat)
   enddo
-  tmp_mat = tmp_mat / interval
-  tmp_vec1 = tmp_vec1 / interval
-  tmp_vec2 = tmp_vec2 / interval
+  tmp_mat = tmp_mat / Delta
+  tmp_vec1 = tmp_vec1 / Delta
+  tmp_vec2 = tmp_vec2 / Delta
   !call calc_eigenvalues(eigenvalues, tmp_mat, tmp_vec1, tmp_vec2)
   !write(EIGEN,*) dble(eigenvalues)
   call calc_singularvalues(singularvalues, tmp_mat, tmp_vec1, tmp_vec2)
