@@ -21,12 +21,14 @@ integer :: NUM_INTERVAL
 integer :: NUM_DULATION 
 integer :: NUM_SAMPLES
 integer :: INI1, FIN1, INI2, FIN2
-integer :: counter, traj, k
+integer :: counter, traj, k, i
 
 integer, parameter :: EIGEN=102
 character(128) :: EIGEN_NAME
+character(20) :: FMT
 complex(kind(0d0)), allocatable :: eigenvalues(:)
 double precision, allocatable :: singularvalues(:)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 complex(kind(0d0)), allocatable :: mode1(:,:)
 complex(kind(0d0)), allocatable :: mode2(:,:)
@@ -36,6 +38,8 @@ complex(kind(0d0)), allocatable :: tmp_vec1(:) ! (1:matrix_size)
 complex(kind(0d0)), allocatable :: tmp_vec2(:) !(1:matrix_size)
 double precision :: rate
 !!!!!!!!!!
+
+integer t1,t2,t_rate, t_max
 
 
 !! specify the output files
@@ -66,7 +70,8 @@ if( op_DN /= "D" .and. op_DN /= "N" ) then
 endif
 
 EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "_SV_" // arg
-DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // "tmp3.dat"
+DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "tmp3.dat"
+FMT='(' // FMT_vals // ',2X)'
 
 !! read theory data from theory_parameters.dat
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
@@ -98,12 +103,21 @@ allocate( tmp_vec2(1:matrix_size) )
 !!  and
 !! prepare shfted data
 NUM_DULATION = nint( DULATION/deltaT )
+NUM_INTERVAL = nint( INTERVAL/deltaT )
+!call system_clock(t1)
 call make_delay_file(Num_Lines, Delay_FILE, Delay_FILE_NAME, &
   Xmat_FILE, Xmat_FILE_NAME, NUM_DULATION )
-NUM_INTERVAL = nint( INTERVAL/deltaT )
+!call make_delay_file_sys(Num_Lines, Delay_FILE_NAME, &
+  !Xmat_FILE_NAME, NUM_DULATION )
 NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_INTERVAL
-write(*,*) "# number of samples = ", NUM_SAMPLES
-write(*,*) "# number of data = ", NUM_lines
+!call system_clock(t2,t_rate,t_max)
+!if( t2<t1) then
+  !write(*,*) dble((t_max-t1) + t2 + 1)/dble(t_rate)
+!else
+  !write(*,*) dble(t2-t1) / dble(t_rate)
+!endif
+
+
 
 
 !! open input files
@@ -112,6 +126,7 @@ open(Delay_FILE,file=Delay_FILE_NAME,status='old')
 !! open output file
 open(unit=EIGEN, file=EIGEN_NAME, status='replace', action='write')
 
+write(EIGEN,'(a,I6,2X,a,E10.3,2X,a,E10.3)') "# #(samples) = ", NUM_SAMPLES, "Delta = ", INTERVAL, "t=", DULATION
 do traj=1, NUM_SAMPLES
   tmp_mat=(0d0,0d0)
   tmp_vec1=(0d0,0d0)
@@ -141,7 +156,10 @@ do traj=1, NUM_SAMPLES
   !call calc_eigenvalues(eigenvalues, tmp_mat, tmp_vec1, tmp_vec2)
   !write(EIGEN,*) dble(eigenvalues)
   call calc_singularvalues(singularvalues, tmp_mat, tmp_vec1, tmp_vec2)
-  write(EIGEN,*) singularvalues
+  do i=1,matrix_size
+    write(EIGEN,FMT,advance='no') singularvalues(i)
+  enddo
+  write(EIGEN,*) 
 enddo
 
 close(Xmat_FILE)
@@ -173,6 +191,23 @@ enddo
 100 close(NFILE)
 
 end subroutine count_lines
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Count number of lines of a given file
+subroutine count_lines_sys(num_lines, NFILE_NAME)
+use global_parameters
+implicit none
+
+integer, intent(out) :: num_lines
+character(128), intent(in) :: NFILE_NAME
+
+call system( 'cat ' // trim(NFILE_NAME) // ' | grep "" -c > ' // trim(TMP_FILE_NAME) )
+open(TMP_FILE,file=TMP_FILE_NAME,status='old')
+read(TMP_FILE,*) num_lines
+close(TMP_FILE)
+call system( 'rm ' // trim(TMP_FILE_NAME) )
+
+end subroutine count_lines_sys
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine make_delay_file(NLINE, OUT_FILE, OUT_FILE_NAME, IN_FILE, IN_FILE_NAME, num_delay)
@@ -206,9 +241,30 @@ close(OUT_FILE)
 
 end subroutine make_delay_file
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine make_delay_file_sys(num_lines, OUT_FILE_NAME, IN_FILE_NAME, num_delay)
+use global_parameters
+implicit none
+
+integer, intent(out) :: NUM_LINES
+integer, intent(in) :: num_delay
+character(128), intent(in) :: IN_FILE_NAME, OUT_FILE_NAME
+character(50) :: c_num
+integer :: i
 
 
+call system( 'cat ' // trim(IN_FILE_NAME) // ' | grep "" -c > ' // trim(TMP_FILE_NAME) )
+open(TMP_FILE,file=TMP_FILE_NAME,status='old')
+read(TMP_FILE,*) num_lines
+close(TMP_FILE)
+call system( 'rm ' // trim(TMP_FILE_NAME) )
 
+write(c_num,*) num_lines-num_delay
+call system( 'tail -n  ' // trim(c_num) // "  " // &
+  trim(IN_FILE_NAME) // ' > ' // trim(OUT_FILE_NAME) )
+
+
+end subroutine make_delay_file_sys
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine make_partial_data(OUT_FILE, OUT_FILE_NAME, INI, FIN, IN_FILE, IN_FILE_NAME)

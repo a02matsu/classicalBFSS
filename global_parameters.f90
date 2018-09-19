@@ -8,6 +8,7 @@ integer :: check_ham
 
 integer :: NMAT
 integer, parameter :: DIM=9
+double precision :: temperature 
 !double precision :: time
 
 integer :: job_number 
@@ -50,6 +51,8 @@ integer, parameter :: Xmode_FILE=17
 integer, parameter :: Vmode_FILE=18
 integer, parameter :: Fmode_FILE=19
 
+integer, parameter :: TMP_FILE=200
+character(6), parameter :: TMP_FILE_NAME="asdfi2"
 
 
 end module global_parameters

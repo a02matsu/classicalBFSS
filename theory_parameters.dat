@@ -1,3 +1,4 @@
 4         ! NMAT
 0d0       ! MASS_SQUARE
-1d-3       ! deltaT : time step
+1d0       ! Temperature
+1d-4       ! deltaT : time step

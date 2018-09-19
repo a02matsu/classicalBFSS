@@ -13,6 +13,7 @@ implicit none
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
   read(PAR_FILE,*) NMAT
   read(PAR_FILE,*) MASS2
+  read(PAR_FILE,*) Temperature
   read(PAR_FILE,*) deltaT
 close(PAR_FILE)
 
@@ -60,6 +61,10 @@ integer, allocatable :: seed(:)
 
 double precision :: rmat(1:NMAT,1:NMAT,1:DIM)
 double precision :: trace
+double precision :: E0, E, ratio
+integer :: DOF
+
+DOF=(DIM-1)*(NMAT**2-1)-DIM*(DIM-1)/2
 
 
 ! ディレクトリ生成
@@ -86,7 +91,6 @@ if( new_config == 1 ) then
   !rmat = 2d0*rmat - 1d0
 
   call BoxMuller(rmat)
-  
 
   ! make rmat traceless
   do n=1,DIM
@@ -98,24 +102,31 @@ if( new_config == 1 ) then
       rmat(i,i,n)=rmat(i,i,n)-trace/dble(NMAT)
     enddo
   enddo
-
-  ! from rmat to Xmat
+  !!!!!!!!!!!!!!!!!!!!!!
+  ! from rmat to Vmat
   do n=1,DIM
     do i=1,NMAT
-      Xmat(i,i,n)=dcmplx(rmat(i,i,n))
+      Vmat(i,i,n)=dcmplx(rmat(i,i,n))
       do j=i+1,NMAT
-        XMAT(i,j,n)=dcmplx(rmat(i,j,n)) + dcmplx(rmat(j,i,n))*(0d0,1d0)
-        XMAT(j,i,n)=dcmplx(rmat(i,j,n)) - dcmplx(rmat(j,i,n))*(0d0,1d0)
+        VMAT(i,j,n)=dcmplx(rmat(i,j,n)) + dcmplx(rmat(j,i,n))*(0d0,1d0)
+        VMAT(j,i,n)=dcmplx(rmat(i,j,n)) - dcmplx(rmat(j,i,n))*(0d0,1d0)
       enddo
     enddo
   enddo
+  !!!!!!!!!!!!!!!!!!!!!!
+  !! X and V must satisry Gauss's law
+  !!  [X_M, V_M]=0 
+  !! and we set the angular momentum to be zero:
+  !!  Tr(X_M V_N - X_N V_M)=0
+  Xmat=(0d0,0d0)
 
+  !!!!!!!!!!!!!!!!!!!!
+  !! rescale for given temperature
+  call calc_hamiltonian(E,Xmat,Vmat)
+  E0=3d0/4d0*dble(DOF)*temperature
+  ratio=E0/E
 
-  !!!!!!!!!!!!!!!!!
-  !! TEMPORARY
-  !! Vmat must satisry [X_M, V_M]=0 
-  !Vmat=Xmat
-  Vmat=(0d0,0d0)
+  Vmat=Vmat*dcmplx(dsqrt(ratio))
 
 else
   if( job_number== 0 ) then 
@@ -133,9 +144,9 @@ else
   read(Inconf_File) Xmat
   read(Inconf_File) Vmat
 
-  do n=1,DIM
-    call check_hermitian(Xmat(:,:,n))
-  enddo
+  !do n=1,DIM
+    !call check_hermitian(Xmat(:,:,n))
+  !enddo
   close(Inconf_FILE)
 endif
 
@@ -215,6 +226,7 @@ do M=1,DIM
   call trace_MM(trace,Xmat(:,:,M),Xmat(:,:,M))
   Ham = Ham - 0.5d0 *  MASS2 * dble(trace)
 enddo
+Ham=Ham * dble(NMAT)/2d0
 
 end subroutine calc_hamiltonian
 
