@@ -146,6 +146,9 @@ else
   read(Inconf_File) Xmat
   read(Inconf_File) Vmat
 
+  Vmat=Vmat*dcmplx(dsqrt(ratio))
+  call calc_hamiltonian(E,Xmat,Vmat)
+  write(*,*) "temperature=", E * 4d0/dble(DOF) / 3d0
   !do n=1,DIM
     !call check_hermitian(Xmat(:,:,n))
   !enddo

@@ -1,6 +1,6 @@
 0          ! job_number : 0:previous config, 123: read config_122
 0          ! new_config 0:start from lastconf, 1:new config
 0          ! write_output  0:write out output, 1:DO NOT write output
-1d2       ! totalT : simulation time
+1d1       ! totalT : simulation time
 0         ! check_gauss_law :: 1:check if G's law is maintained
-0         ! check_hamiltonian_conservation :: 1:check if H is conserved
+1         ! check_hamiltonian_conservation :: 1:check if H is conserved
