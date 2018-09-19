@@ -146,7 +146,7 @@ else
   read(Inconf_File) Xmat
   read(Inconf_File) Vmat
 
-  Vmat=Vmat*dcmplx(dsqrt(ratio))
+  !Vmat=Vmat*dcmplx(dsqrt(ratio))
   call calc_hamiltonian(E,Xmat,Vmat)
   write(*,*) "temperature=", E * 4d0/dble(DOF) / 3d0
   !do n=1,DIM
@@ -207,9 +207,9 @@ use global_parameters
 use matrix_functions, only : matrix_commutator, trace_MM, check_hermitian
 implicit none
 
+double precision, intent(out) :: Ham
 complex(kind(0d0)), intent(in) :: Xmat(1:NMAT,1:NMAT,1:DIM)
 complex(kind(0d0)), intent(in) :: Vmat(1:NMAT,1:NMAT,1:DIM)
-double precision, intent(out) :: Ham
 complex(kind(0d0)) :: tmpmat(1:NMAT,1:NMAT)
 complex(kind(0d0)) :: comm(1:NMAT,1:NMAT)
 complex(kind(0d0)) :: trace
@@ -232,6 +232,7 @@ do M=1,DIM
   Ham = Ham - 0.5d0 *  MASS2 * dble(trace)
 enddo
 Ham=Ham * dble(NMAT)/2d0
+
 
 end subroutine calc_hamiltonian
 
@@ -473,7 +474,7 @@ complex(kind(0d0)):: Xmat_bak(1:NMAT,1:NMAT,1:DIM)
 complex(kind(0d0)):: Vmat_bak(1:NMAT,1:NMAT,1:DIM)
 double precision :: Ham0, Ham1
 integer, parameter :: numite=20 
-double precision, parameter :: Dtau=1d-2
+double precision, parameter :: Dtau=1d-1
 integer :: NUM
 integer ite,k
 

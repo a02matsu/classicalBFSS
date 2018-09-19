@@ -1,7 +1,3 @@
-!!! module for global parameters
-!include "global_parameters.f90"
-!include "subroutines.f90"
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! MAIN
 program main
@@ -13,7 +9,7 @@ implicit none
 complex(kind(0d0)), allocatable :: Xmat(:,:,:)
 complex(kind(0d0)), allocatable :: Vmat(:,:,:)
 complex(kind(0d0)), allocatable :: Fmat(:,:,:)
-double precision :: time
+double precision :: time, Ham0, Ham1
 
 integer :: i,j,m,n,k
 
@@ -31,6 +27,8 @@ if( write_output == 0 ) then
   open(unit=Vmat_FILE, file=Vmat_FILE_NAME, status='replace', action='write')
   open(unit=Fmat_FILE, file=Fmat_FILE_NAME, status='replace', action='write')
 endif
+
+call calc_hamiltonian(Ham0,Xmat,Vmat)
 do k=0,Ntau-1
   time=time+deltaT
   call time_evolution_LeapFrog(Xmat,Vmat,Fmat)
@@ -43,6 +41,10 @@ do k=0,Ntau-1
     call write_matrix(time,Fmat,Fmat_FILE)
   endif
 enddo
+call calc_hamiltonian(Ham1,Xmat,Vmat)
+
+write(*,*) Ham0, Ham1
+
 if( write_output == 0 ) then
   close(Xmat_FILE)
   close(Vmat_FILE)
