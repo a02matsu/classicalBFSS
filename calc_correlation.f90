@@ -85,7 +85,7 @@ FMT='(' // FMT_vals // ',2X)'
 !! read theory data from theory_parameters.dat
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
 read(PAR_FILE,*) NMAT
-read(PAR_FILE,*) MASS2
+read(PAR_FILE,*) MASS
 read(PAR_FILE,*) temperature
 read(PAR_FILE,*) deltaT
 close(PAR_FILE)

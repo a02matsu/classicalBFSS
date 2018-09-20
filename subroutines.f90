@@ -12,7 +12,7 @@ implicit none
 !!!!! read parameter file !!!!
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
   read(PAR_FILE,*) NMAT
-  read(PAR_FILE,*) MASS2
+  read(PAR_FILE,*) MASS
   read(PAR_FILE,*) Temperature
   read(PAR_FILE,*) deltaT
 close(PAR_FILE)
@@ -195,7 +195,7 @@ do m=1,DIM
 enddo
 
 do m=1,DIM
-  Fmat(:,:,m)=Fmat(:,:,m) +  dcmplx( 0.5d0 * MASS2 )*Xmat(:,:,m)
+  Fmat(:,:,m)=Fmat(:,:,m) -  dcmplx( MASS * MASS )*Xmat(:,:,m)
 enddo
 
 end subroutine calc_force
@@ -229,7 +229,7 @@ do M=1,DIM-1
 enddo
 do M=1,DIM
   call trace_MM(trace,Xmat(:,:,M),Xmat(:,:,M))
-  Ham = Ham - 0.5d0 *  MASS2 * dble(trace)
+  Ham = Ham + MASS * MASS * dble(trace)
 enddo
 Ham=Ham * dble(NMAT)/2d0
 

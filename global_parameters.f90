@@ -17,7 +17,7 @@ double precision :: deltaT
 double precision :: totalT
 integer :: write_output
 
-double precision :: MASS2
+double precision :: MASS
 integer :: Ntau  ! nint(totalT / deltaT)
 integer :: dimG  ! NMAT*NMAT-1
 integer :: matrix_size ! dimG * DIM
