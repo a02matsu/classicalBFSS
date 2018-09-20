@@ -1,3 +1,6 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! usage: 
+!! % ./calc_correlations.exe [file number] [GM] [DN] [Delta] [Dulation]
 program calc_correlation
 use global_parameters
 use subroutines
@@ -15,8 +18,9 @@ character(128) :: DELAY_FILE_NAME
 integer, parameter :: DELAY_FILE=100
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-double precision, parameter :: Delta = 1.0d0 ! \Delta
-double precision, parameter :: DULATION = 0.0d0 ! t
+double precision :: Delta  != 1.0d0 ! \Delta
+double precision :: DULATION != 0.0d0 ! t
+character(10) :: c_delta, c_dulation
 integer :: NUM_Delta
 integer :: NUM_DULATION 
 integer :: NUM_SAMPLES
@@ -47,6 +51,8 @@ call getarg(1,arg)
 call getarg(2,op_XVF)
 call getarg(3,op_GM)
 call getarg(4,op_DN)
+call getarg(5,c_delta)
+call getarg(6,c_dulation)
 
 if( op_XVF == "X" ) then 
   Xmat_FILE_NAME="OUTPUT/Xmat_" // arg
@@ -69,7 +75,10 @@ if( op_DN /= "D" .and. op_DN /= "N" ) then
   op_DN = "D" 
 endif
 
-EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "_SV_" // arg
+read(c_delta,*) delta
+read(c_dulation,*) dulation
+
+EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "_t" // trim(c_dulation) // "D" // trim(c_Delta) // "_SV_" // arg
 DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "tmp3.dat"
 FMT='(' // FMT_vals // ',2X)'
 
