@@ -9,6 +9,7 @@ subroutine set_parameters
 use global_parameters
 implicit none
 
+
 !!!!! read parameter file !!!!
 open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
   read(PAR_FILE,*) NMAT

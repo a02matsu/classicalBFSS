@@ -12,6 +12,7 @@ complex(kind(0d0)), allocatable :: Fmat(:,:,:)
 double precision :: time, Ham0, Ham1
 
 integer :: i,j,m,n,k
+character(128) OUT_FMT
 
 call set_parameters
 call set_initial(time,Xmat,Vmat,Fmat)
@@ -21,11 +22,14 @@ if( check_ham == 1 ) then
   call check_hamiltonian(Xmat,Vmat)
 endif
 
-
+OUT_FMT=trim('(a,I3,2X,a,f6,2,2X,a,E15.2,2X,a,E15.2)')
 if( write_output == 0 ) then
   open(unit=Xmat_FILE, file=Xmat_FILE_NAME, status='replace', action='write')
   open(unit=Vmat_FILE, file=Vmat_FILE_NAME, status='replace', action='write')
   open(unit=Fmat_FILE, file=Fmat_FILE_NAME, status='replace', action='write')
+  write(Xmat_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"TIME=",totalT,"deltaT=", deltaT
+  write(Vmat_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"TIME=",totalT,"deltaT=", deltaT
+  write(Fmat_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"TIME=",totalT,"deltaT=", deltaT
 endif
 
 call calc_hamiltonian(Ham0,Xmat,Vmat)
