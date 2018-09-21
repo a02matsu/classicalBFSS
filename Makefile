@@ -1,5 +1,5 @@
-FC=ifort
-#FC=gfortran
+#FC=ifort
+FC=gfortran
 #FLAGS_IFORT= -mkl -CB -traceback -g 
 FLAGS_IFORT= -mkl -O2
 FLAGS_GCC= -O2 -llapack -lblas 

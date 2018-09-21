@@ -22,7 +22,7 @@ if( check_ham == 1 ) then
   call check_hamiltonian(Xmat,Vmat)
 endif
 
-OUT_FMT=trim('(a,I3,2X,a,f6,2,2X,a,E15.2,2X,a,E15.2)')
+OUT_FMT=trim('(a,I3,2X,a,f6.2,2X,a,E12.2,2X,a,E12.2)')
 if( write_output == 0 ) then
   open(unit=Xmat_FILE, file=Xmat_FILE_NAME, status='replace', action='write')
   open(unit=Vmat_FILE, file=Vmat_FILE_NAME, status='replace', action='write')
