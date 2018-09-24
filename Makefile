@@ -18,6 +18,10 @@ CORR_SRC=calc_correlation.f90
 CORR_OBJ=$(CORR_SRC:.f90=.o)
 CORR_PROG=calc_correlations.exe
 ########################
+SFF_SRC=calc_spectral_form_factor.f90 
+SFF_OBJ=$(SFF_SRC:.f90=.o)
+SFF_PROG=calc_spectral_form_factor.exe
+#########################
 LIBS= ~/lib/liblapack.a
 
 
@@ -44,6 +48,14 @@ else
 endif
 
 
+sff:$(SFF_PROG)
+
+$(SFF_PROG): $(OBJS) $(SFF_OBJ)
+ifeq ($(FC),gfortran)
+	$(FC) $(FLAGS_GCC) -o $@ $(OBJS) $(SFF_OBJ) $(LIBS)
+else
+	$(FC) $(FLAGS_IFORT) -o $@ $(OBJS) $(SFF_OBJ)
+endif
 
 # moduleをコンパイルするときの依存性を解消
 %.o: %.f90
@@ -62,6 +74,16 @@ subroutines.o: \
   matrix_functions.o
   calc_correlation.o: \
   matrix_functions.o
+calc_correlation.o: \
+	global_parameters.o \
+	subroutines.o \
+	matrix_functions.o 
+calc_spectral_form_factor.o: \
+	global_parameters.o \
+	subroutines.o
+
+
+
 
 .PHONY: clean
 clean:

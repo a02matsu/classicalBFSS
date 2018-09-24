@@ -27,18 +27,9 @@ open(INPUT_FILE, file=INPUT_FILE_NAME, status='old', action='READ')
   read(INPUT_FILE,*) check_ham
 close(INPUT_FILE)
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 NTAU = nint(totalT/deltaT)
 dimG = NMAT*NMAT-1
 matrix_size = dimG * DIM
-
-
-if( job_number == 0 ) then
-  Inconf_FILE_NAME="CONFIG/lastconf.dat"
-else
-  write(Inconf_FILE_NAME, '("CONFIG/config_",i4.4)') job_number-1
-endif
 
 end subroutine set_parameters
 
@@ -66,6 +57,13 @@ double precision :: E0, E, ratio
 integer :: DOF
 
 DOF=(DIM-1)*(NMAT**2-1)-DIM*(DIM-1)/2
+
+! Input configuration
+if( job_number == 0 ) then
+  Inconf_FILE_NAME="CONFIG/lastconf.dat"
+else
+  write(Inconf_FILE_NAME, '("CONFIG/config_",i4.4)') job_number-1
+endif
 
 
 ! ディレクトリ生成
