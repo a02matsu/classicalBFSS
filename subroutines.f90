@@ -23,28 +23,34 @@ open(INPUT_FILE, file=INPUT_FILE_NAME, status='old', action='READ')
   read(INPUT_FILE,*) new_config
   read(INPUT_FILE,*) write_output
   read(INPUT_FILE,*) totalT
+  read(INPUT_FILE,*) integrationT
+  read(INPUT_FILE,*) dulationT
   read(INPUT_FILE,*) check_gauss
   read(INPUT_FILE,*) check_ham
 close(INPUT_FILE)
 
 NTAU = nint(totalT/deltaT)
 dimG = NMAT*NMAT-1
-matrix_size = dimG * DIM
+matrix_size = NMAT * NMAT * DIM
 
 end subroutine set_parameters
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! Initial values
-subroutine set_initial(time,Xmat,Vmat,Fmat)
+subroutine set_initial(time,Xmat1,Vmat1,Fmat1,Xmat2,Vmat2,Fmat2)
 use global_parameters
 use matrix_functions, only : check_hermitian
 implicit none
 
 double precision :: time
-complex(kind(0d0)), allocatable :: Xmat(:,:,:)
-complex(kind(0d0)), allocatable :: Vmat(:,:,:)
-complex(kind(0d0)), allocatable :: Fmat(:,:,:)
+complex(kind(0d0)) :: Xmat1(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Vmat1(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Fmat1(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Xmat2(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Vmat2(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)) :: Fmat2(1:NMAT,1:NMAT,1:DIM)
+integer :: num_dulation
 integer :: n, i,j
 double precision :: r
 
@@ -57,6 +63,8 @@ double precision :: E0, E, ratio
 integer :: DOF
 
 DOF=(DIM-1)*(NMAT**2-1)-DIM*(DIM-1)/2
+num_integration = int(integrationT / deltaT)
+num_dulation = int(dulationT / deltaT)
 
 ! Input configuration
 if( job_number == 0 ) then
@@ -69,11 +77,7 @@ endif
 ! ディレクトリ生成
 call system('./make_directory.sh')
 
-! set matrices
-allocate( Xmat(1:NMAT,1:NMAT,1:DIM) )
-allocate( Vmat(1:NMAT,1:NMAT,1:DIM) )
-allocate( Fmat(1:NMAT,1:NMAT,1:DIM) )
-
+!! set initial Xmat1 and Vmat1
 if( new_config == 1 ) then 
   job_number=0
   time=0d0
@@ -105,10 +109,10 @@ if( new_config == 1 ) then
   ! from rmat to Vmat
   do n=1,DIM
     do i=1,NMAT
-      Vmat(i,i,n)=dcmplx(rmat(i,i,n))
+      Vmat1(i,i,n)=dcmplx(rmat(i,i,n))
       do j=i+1,NMAT
-        VMAT(i,j,n)=dcmplx(rmat(i,j,n)) + dcmplx(rmat(j,i,n))*(0d0,1d0)
-        VMAT(j,i,n)=dcmplx(rmat(i,j,n)) - dcmplx(rmat(j,i,n))*(0d0,1d0)
+        VMAT1(i,j,n)=dcmplx(rmat(i,j,n)) + dcmplx(rmat(j,i,n))*(0d0,1d0)
+        VMAT1(j,i,n)=dcmplx(rmat(i,j,n)) - dcmplx(rmat(j,i,n))*(0d0,1d0)
       enddo
     enddo
   enddo
@@ -117,16 +121,16 @@ if( new_config == 1 ) then
   !!  [X_M, V_M]=0 
   !! and we set the angular momentum to be zero:
   !!  Tr(X_M V_N - X_N V_M)=0
-  Xmat=(0d0,0d0)
+  Xmat1=(0d0,0d0)
 
   !!!!!!!!!!!!!!!!!!!!
   !! rescale for given temperature
-  call calc_hamiltonian(E,Xmat,Vmat)
+  call calc_hamiltonian(E,Xmat1,Vmat1)
   E0=3d0/4d0*dble(DOF)*temperature
   ratio=E0/E
 
-  Vmat=Vmat*dcmplx(dsqrt(ratio))
-  call calc_hamiltonian(E,Xmat,Vmat)
+  Vmat1=Vmat1*dcmplx(dsqrt(ratio))
+  call calc_hamiltonian(E,Xmat1,Vmat1)
   write(*,*) "temperature=", E * 4d0/dble(DOF) / 3d0
 
 else
@@ -142,11 +146,11 @@ else
   job_number=job_number+1
 
   read(Inconf_File) time
-  read(Inconf_File) Xmat
-  read(Inconf_File) Vmat
+  read(Inconf_File) Xmat1
+  read(Inconf_File) Vmat1
 
   !Vmat=Vmat*dcmplx(dsqrt(ratio))
-  call calc_hamiltonian(E,Xmat,Vmat)
+  call calc_hamiltonian(E,Xmat1,Vmat1)
   write(*,*) "temperature=", E * 4d0/dble(DOF) / 3d0
   !do n=1,DIM
     !call check_hermitian(Xmat(:,:,n))
@@ -154,14 +158,24 @@ else
   close(Inconf_FILE)
 endif
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! set Xmat2, Vmat2, Fmat2
+Xmat2=Xmat1
+Vmat2=Vmat1
+Fmat2=Fmat1
+call time_evolution(Xmat2,Vmat2,Fmat2,dulationT)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 write(Outconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number
-write(Xmat_FILE_NAME,'("OUTPUT/Xmat_",i4.4)') job_number
-write(Vmat_FILE_NAME,'("OUTPUT/Vmat_",i4.4)') job_number
-write(Fmat_FILE_NAME,'("OUTPUT/Fmat_",i4.4)') job_number
-write(Xmode_FILE_NAME,'("OUTPUT/Xmode_",i4.4)') job_number
-write(Vmode_FILE_NAME,'("OUTPUT/Vmode_",i4.4)') job_number
-write(Fmode_FILE_NAME,'("OUTPUT/Fmode_",i4.4)') job_number
+!write(Xmat_FILE_NAME,'("OUTPUT/Xint_",i4.4)') job_number
+!write(Vmat_FILE_NAME,'("OUTPUT/Vint_",i4.4)') job_number
+!write(Fmat_FILE_NAME,'("OUTPUT/Fint_",i4.4)') job_number
+!write(Xmode_FILE_NAME,'("OUTPUT/Xmode_",i4.4)') job_number
+!write(Vmode_FILE_NAME,'("OUTPUT/Vmode_",i4.4)') job_number
+!write(Fmode_FILE_NAME,'("OUTPUT/Fmode_",i4.4)') job_number
+write(MXX_FILE_NAME,'("OUTPUT/MXX_",i4.4)') job_number
+write(MVV_FILE_NAME,'("OUTPUT/MVV_",i4.4)') job_number
+write(MFF_FILE_NAME,'("OUTPUT/MFF_",i4.4)') job_number
 end subroutine set_initial
 
 
@@ -261,6 +275,78 @@ enddo
 end subroutine time_evolution_LeapFrog
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! time evolution for a given time
+subroutine time_evolution(Xmat,Vmat,Fmat,t)
+use global_parameters
+implicit none
+
+complex(kind(0d0)), intent(inout) :: Xmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)), intent(inout) :: Vmat(1:NMAT,1:NMAT,1:DIM)
+complex(kind(0d0)), intent(inout) :: Fmat(1:NMAT,1:NMAT,1:DIM)
+double precision, intent(in) :: t
+integer :: num_t
+integer :: i
+
+num_t = nint( t / deltaT)
+
+do i = 1, num_t
+  call time_evolution_LeapFrog(Xmat,Vmat,Fmat)
+enddo
+end subroutine time_evolution
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! make integration
+subroutine integration(X1_int, X2_int, XX_int, Xmat1, Xmat2, counter)
+use global_parameters
+implicit none
+
+complex(kind(0d0)), intent(inout) :: X1_int(1:matrix_size), X2_int(1:matrix_size)
+complex(kind(0d0)), intent(inout) :: XX_int(1:matrix_size,1:matrix_size)
+complex(kind(0d0)), intent(in) :: Xmat1(1:NMAT,1:NMAT,1:DIM), Xmat2(1:NMAT,1:NMAT,1:DIM)
+integer, intent(in) :: counter
+integer :: ele_I, ele_J
+integer :: i,j,n, ii,jj,nn
+double precision :: rate 
+
+if( counter == 0 .or. counter == num_integration-1 ) then
+  rate=0.5d0
+else
+  rate=1d0
+endif
+
+do n=1,DIM
+  do j=1,NMAT
+    do i=1,NMAT
+       ele_I = (n-1)*NMAT*NMAT + (j-1)*NMAT + i 
+       X1_int(ele_I) = X1_int(ele_I) + Xmat1(i,j,n)*dcmplx(deltaT*rate)
+       X2_int(ele_I) = X2_int(ele_I) + Xmat2(i,j,n)*dcmplx(deltaT*rate)
+    enddo
+  enddo
+enddo
+!!!
+do nn=1,DIM
+  do jj=1,NMAT
+    do ii=1,NMAT
+      ele_I = (nn-1)*NMAT*NMAT + (jj-1)*NMAT + ii 
+      do n=1,DIM
+        do j=1,NMAT
+          do i=1,NMAT
+            ele_J = (n-1)*NMAT*NMAT + (j-1)*NMAT + i 
+
+            XX_int(ele_I,ele_J)=XX_int(ele_I,ele_J) &
+              + dconjg(Xmat1(i,j,n)) * Xmat2(ii,jj,nn) * dcmplx(deltaT*rate)
+          enddo
+        enddo
+      enddo
+    enddo
+  enddo
+enddo
+end subroutine integration
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! write matrix to file
 subroutine write_matrix(time,MAT,FILE_NUM)
 use global_parameters
@@ -291,6 +377,36 @@ write(FILE_NUM,*)
 
 end subroutine write_matrix
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! write matrix to file
+subroutine write_matrix2(time, vec1, vec2, mat, FILE_NUM)
+use global_parameters
+implicit none
+
+double precision, intent(in) :: time
+complex(kind(0d0)), intent(in) :: vec1(1:matrix_size)
+complex(kind(0d0)), intent(in) :: vec2(1:matrix_size)
+complex(kind(0d0)), intent(in) :: MAT(1:matrix_size, 1:matrix_size)
+integer, intent(in) :: FILE_NUM
+
+integer j,i
+
+character(50) FMT1, FMT2
+
+FMT1="(" // trim(FMT_time) // ",2X)"
+FMT2="(" // trim(FMT_vals) // ",2X," // trim(FMT_vals) // ",2X)"
+
+write(FILE_NUM,FMT1,advance='no') time 
+!write(FILE_NUM,'(E15.8,2X)',advance='no') time 
+do j=1,matrix_size
+  do i=1,matrix_size
+    !write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
+    write(FILE_NUM,FMT2,advance='no') MAT(i,j) - dconjg(vec1(i)) * dconjg(vec2(j))
+  enddo
+enddo
+write(FILE_NUM,*)
+
+end subroutine write_matrix2
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! read matrix from file

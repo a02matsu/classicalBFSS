@@ -2,7 +2,7 @@
 
 OUTDIR="OUTPUT"
 CONFDIR="CONFIG"
-EIGENDIR="EIGENS"
+EIGENDIR="SV"
 
 if [ ! -d ${OUTDIR} ]; then
   mkdir ${OUTDIR}

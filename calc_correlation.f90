@@ -1,6 +1,6 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! usage: 
-!! % ./calc_correlations.exe [file number] [GM] [DN] [Delta] [Dulation]
+!! % ./calc_correlations.exe [file number] [XVF] [GM] [DN] [Delta] [Dulation]
 program calc_correlation
 use global_parameters
 use subroutines
@@ -14,7 +14,7 @@ character :: op_DN ! <X_i^dagger X_j> or <X_i X_j>
 double precision :: time
 integer :: Num_Lines
 
-character(128) :: DELAY_FILE_NAME
+character(128) :: DELAY_FILE_NAME, ORG_FILE_NAME, COMM
 integer, parameter :: DELAY_FILE=100
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -79,7 +79,12 @@ read(c_delta,*) delta
 read(c_dulation,*) dulation
 
 EIGEN_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "_t" // trim(c_dulation) // "D" // trim(c_Delta) // "_SV_" // arg
-DELAY_FILE_NAME = "EIGENS/" // op_XVF // op_GM // op_DN // "tmp3.dat"
+ORG_FILE_NAME = "EIGENS/output" // trim(arg)  &
+  // "_" // op_XVF // op_GM // op_DN // "org_SV_t" &
+  // trim(c_dulation) // "D" // trim(c_Delta) 
+DELAY_FILE_NAME = "EIGENS/output" // trim(arg) // "_" &
+  // op_XVF // op_GM // op_DN // "+" // trim(c_dulation) &
+  // "_SV_t" // trim(c_dulation) // "D" // trim(c_Delta) 
 FMT='(' // FMT_vals // ',2X)'
 
 !! read theory data from theory_parameters.dat
@@ -114,21 +119,12 @@ allocate( tmp_vec2(1:matrix_size) )
 !! prepare shfted data
 NUM_DULATION = nint( DULATION/deltaT )
 NUM_Delta = nint( Delta/deltaT )
-!call system_clock(t1)
-!write(*,*) NUM_DULATION, NUM_Delta
+
+COMM="if [ ! -e " // trim(ORG_FILE_NAME) // " ]; then cp " // trim(Xmat_FILE_NAME) // " " // trim(ORG_FILE_NAME) // "; fi" 
+call system( COMM )
 call make_delay_file(Num_Lines, Delay_FILE, Delay_FILE_NAME, &
-  Xmat_FILE, Xmat_FILE_NAME, NUM_DULATION )
-!call make_delay_file_sys(Num_Lines, Delay_FILE_NAME, &
-  !Xmat_FILE_NAME, NUM_DULATION )
+  Xmat_FILE, ORG_FILE_NAME, NUM_DULATION )
 NUM_SAMPLES = (Num_lines - NUM_DULATION) / NUM_Delta
-!call system_clock(t2,t_rate,t_max)
-!if( t2<t1) then
-  !write(*,*) dble((t_max-t1) + t2 + 1)/dble(t_rate)
-!else
-  !write(*,*) dble(t2-t1) / dble(t_rate)
-!endif
-
-
 
 
 !! open input files
@@ -177,7 +173,8 @@ close(Xmat_FILE)
 close(Delay_FILE)
 close(EIGEN)
 
-call system( '/bin/rm ' // trim(DELAY_FILE_NAME) )
+!call system( '/bin/rm ' // trim(DELAY_FILE_NAME) )
+
 
 
 end program calc_correlation
