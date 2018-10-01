@@ -9,7 +9,7 @@ DIM=9
 MASS=0.0
 matrix_size = DIM*NMAT*NMAT
 ##############
-XVF="F"
+XVF="X"
 ver="0000"
 delay_time="0.0"  # delay time
 Delta="2.0"  # range of integration

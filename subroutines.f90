@@ -75,9 +75,12 @@ endif
 
 
 ! ディレクトリ生成
-call system('./make_directory.sh')
+!call system('./make_directory.sh')
+call system('FILE="OUTPUT"; if [ ! -d $FILE ]; then mkdir -p $FILE; fi')
+call system('FILE="CONFIG"; if [ ! -d $FILE ]; then mkdir -p $FILE; fi')
+call system('FILE="SV"; if [ ! -d $FILE ]; then mkdir -p $FILE; fi')
 
-!! set initial Xmat1 and Vmat1
+!! set initial Xmat1, Vmat1 and Fmat1
 if( new_config == 1 ) then 
   job_number=0
   time=0d0
@@ -157,6 +160,7 @@ else
   !enddo
   close(Inconf_FILE)
 endif
+call calc_force(Fmat1,Xmat1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! set Xmat2, Vmat2, Fmat2
@@ -314,27 +318,31 @@ else
   rate=1d0
 endif
 
+ele_I = 0
 do n=1,DIM
   do j=1,NMAT
     do i=1,NMAT
-       ele_I = (n-1)*NMAT*NMAT + (j-1)*NMAT + i 
+       ele_I = ele_I + 1
        X1_int(ele_I) = X1_int(ele_I) + Xmat1(i,j,n)*dcmplx(deltaT*rate)
        X2_int(ele_I) = X2_int(ele_I) + Xmat2(i,j,n)*dcmplx(deltaT*rate)
     enddo
   enddo
 enddo
 !!!
+ele_I=0
 do nn=1,DIM
   do jj=1,NMAT
     do ii=1,NMAT
-      ele_I = (nn-1)*NMAT*NMAT + (jj-1)*NMAT + ii 
+      ele_I = ele_I + 1
+      ele_J=0
       do n=1,DIM
         do j=1,NMAT
           do i=1,NMAT
-            ele_J = (n-1)*NMAT*NMAT + (j-1)*NMAT + i 
+            ele_J = ele_J + 1
+            !ele_J = (n-1)*NMAT*NMAT + (j-1)*NMAT + i 
 
-            XX_int(ele_I,ele_J)=XX_int(ele_I,ele_J) &
-              + dconjg(Xmat1(i,j,n)) * Xmat2(ii,jj,nn) * dcmplx(deltaT*rate)
+            XX_int(ele_J,ele_I)=XX_int(ele_J,ele_I) &
+              + dconjg(Xmat2(i,j,n)) * Xmat1(ii,jj,nn) * dcmplx(deltaT*rate)
           enddo
         enddo
       enddo
@@ -401,7 +409,7 @@ write(FILE_NUM,FMT1,advance='no') time
 do j=1,matrix_size
   do i=1,matrix_size
     !write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
-    write(FILE_NUM,FMT2,advance='no') MAT(i,j) - dconjg(vec1(i)) * dconjg(vec2(j))
+    write(FILE_NUM,FMT2,advance='no') MAT(i,j) - dconjg(vec2(i)) * dconjg(vec1(j))
   enddo
 enddo
 write(FILE_NUM,*)

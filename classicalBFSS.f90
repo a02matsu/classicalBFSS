@@ -33,6 +33,7 @@ character(128) OUT_FMT
 
 !! read parameter and input files
 call set_parameters
+
 ! set matrices
 allocate( Xmat1(1:NMAT,1:NMAT,1:DIM) )
 allocate( Vmat1(1:NMAT,1:NMAT,1:DIM) )
@@ -51,22 +52,13 @@ allocate( Fmat2_int(1:matrix_size) )
 allocate( XX_int(matrix_size, matrix_size) )
 allocate( VV_int(matrix_size, matrix_size) )
 allocate( FF_int(matrix_size, matrix_size) )
-Xmat1_int=(0d0,0d0)
-Vmat1_int=(0d0,0d0)
-Fmat1_int=(0d0,0d0)
-Xmat2_int=(0d0,0d0)
-Vmat2_int=(0d0,0d0)
-Fmat2_int=(0d0,0d0)
-XX_int=(0d0,0d0)
-VV_int=(0d0,0d0)
-FF_int=(0d0,0d0)
 
 ! set initial values of Xmat1 
 ! and 
 ! make Xmat2 by evoluting Xmat1 by dulationT 
+  !open(unit=23, file="test", status='replace', action='write')
+  !write(23,*) "###"
 call set_initial(time,Xmat1,Vmat1,Fmat1,Xmat2,Vmat2,Fmat2)
-call calc_force(Fmat1,Xmat1)
-call calc_force(Fmat2,Xmat2)
 
 if( check_ham == 1 ) then
   call check_hamiltonian(Xmat1,Vmat1)
@@ -77,12 +69,9 @@ if( write_output == 0 ) then
   open(unit=MXX_FILE, file=MXX_FILE_NAME, status='replace', action='write')
   open(unit=MVV_FILE, file=MVV_FILE_NAME, status='replace', action='write')
   open(unit=MFF_FILE, file=MFF_FILE_NAME, status='replace', action='write')
-  open(unit=200, file="test", status='replace', action='write')
-  write(200,*) "###"
-  write(*,*) "###"
-  write(MXX_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integration_time=",integrationT, "dulationT=", dulationT
-  write(MVV_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integration_time=",integrationT, "dulationT=", dulationT
-  write(MFF_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integration_time=",integrationT, "dulationT=", dulationT
+  write(MXX_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integ_time=",integrationT, "delay_time=", dulationT
+  write(MVV_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integ_time=",integrationT, "delay_time=", dulationT
+  write(MFF_FILE,OUT_FMT) "# NMAT=",NMAT,"M=",Mass,"totalT=",totalT, "integ_time=",integrationT, "delay_time=", dulationT
 !  open(unit=Xmat_FILE, file=Xmat_FILE_NAME, status='replace', action='write')
 !  open(unit=Vmat_FILE, file=Vmat_FILE_NAME, status='replace', action='write')
 !  open(unit=Fmat_FILE, file=Fmat_FILE_NAME, status='replace', action='write')
@@ -101,6 +90,15 @@ if( write_output == 0 ) then
 endif
 
 call calc_hamiltonian(Ham0,Xmat1,Vmat1)
+Xmat1_int=(0d0,0d0)
+Vmat1_int=(0d0,0d0)
+Fmat1_int=(0d0,0d0)
+Xmat2_int=(0d0,0d0)
+Vmat2_int=(0d0,0d0)
+Fmat2_int=(0d0,0d0)
+XX_int=(0d0,0d0)
+VV_int=(0d0,0d0)
+FF_int=(0d0,0d0)
 counter=0
 do k=0,Ntau-1
   !!! integration 
@@ -118,6 +116,9 @@ do k=0,Ntau-1
   counter = counter + 1
   if( counter == num_integration ) then
     !! write out result
+    !call check_hermitian( XX_int )
+    !call check_hermitian( VV_int )
+    !call check_hermitian( FF_int )
     if( write_output == 0 ) then 
       !call write_matrix(time,Xmat_int,Xmat_FILE)
       !call write_matrix(time,Vmat_int,Vmat_FILE)

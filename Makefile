@@ -60,7 +60,7 @@ endif
 # moduleをコンパイルするときの依存性を解消
 %.o: %.f90
 ifeq ($(FC),gfortran)
-	$(FC) -c $<
+	$(FC) $(FLAGS_GCC) -c $<
 else
 	$(FC) $(FLAGS_IFORT) -c $<
 endif

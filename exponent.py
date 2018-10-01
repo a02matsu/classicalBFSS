@@ -1,13 +1,15 @@
-#! /opt/intel/intelpython3/bin/python
+#! /usr/local/intelpython3/bin/python
 import numpy as np
 
 ver="0002"
 D="1.0"
-t="1.0"
+t="0.0"
 
-XFILE="EIGENS/XMD_t" + t +"D" + D + "_SV_" + ver
-VFILE="EIGENS/VMD_t" + t +"D" + D + "_SV_" + ver
-FFILE="EIGENS/FMD_t" + t +"D" + D + "_SV_" + ver
+XFILE="SV/sv" + ver + "_Xmat_t" + t +"D" + D 
+VFILE="SV/sv" + ver + "_Vmat_t" + t +"D" + D 
+FFILE="SV/sv" + ver + "_Fmat_t" + t +"D" + D 
+
+print( XFILE )
 
 Xa = np.loadtxt(XFILE)
 Va = np.loadtxt(VFILE)
