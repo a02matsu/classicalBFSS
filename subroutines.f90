@@ -11,22 +11,26 @@ implicit none
 
 
 !!!!! read parameter file !!!!
-open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
-  read(PAR_FILE,*) NMAT
-  read(PAR_FILE,*) MASS
-  read(PAR_FILE,*) Temperature
-  read(PAR_FILE,*) deltaT
-close(PAR_FILE)
+!open(PAR_FILE, file=PAR_FILE_NAME, status='old', action='READ')
+  !read(PAR_FILE,*) NMAT
+  !read(PAR_FILE,*) MASS
+  !read(PAR_FILE,*) Temperature
+  !read(PAR_FILE,*) deltaT
+!close(PAR_FILE)
 
 open(INPUT_FILE, file=INPUT_FILE_NAME, status='old', action='READ')
+  read(INPUT_FILE,*) NMAT
+  read(INPUT_FILE,*) Temperature
+  read(INPUT_FILE,*) deltaT
   read(INPUT_FILE,*) job_number
   read(INPUT_FILE,*) new_config
   read(INPUT_FILE,*) write_output
+  read(INPUT_FILE,*) check_gauss
+  read(INPUT_FILE,*) check_ham
+  read(INPUT_FILE,*) MASS
   read(INPUT_FILE,*) totalT
   read(INPUT_FILE,*) integrationT
   read(INPUT_FILE,*) dulationT
-  read(INPUT_FILE,*) check_gauss
-  read(INPUT_FILE,*) check_ham
 close(INPUT_FILE)
 
 NTAU = nint(totalT/deltaT)
@@ -68,9 +72,11 @@ num_dulation = int(dulationT / deltaT)
 
 ! Input configuration
 if( job_number == 0 ) then
-  Inconf_FILE_NAME="CONFIG/lastconf.dat"
+  write(Inconf_FILE_NAME,'("CONFIG/lastconf_M",f3.1,"t",f3.1,"D",f3.1)') MASS,dulationT,integrationT
+  !Inconf_FILE_NAME="CONFIG/lastconf.dat"
 else
-  write(Inconf_FILE_NAME, '("CONFIG/config_",i4.4)') job_number-1
+  write(Inconf_FILE_NAME,'("CONFIG/config_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number-1
+  !write(Inconf_FILE_NAME, '("CONFIG/config_",i4.4)') job_number-1
 endif
 
 
@@ -138,9 +144,11 @@ if( new_config == 1 ) then
 
 else
   if( job_number== 0 ) then 
-    Inconf_FILE_NAME="CONFIG/lastconf"
+    write(Inconf_FILE_NAME,'("CONFIG/lastconf_M",f3.1,"t",f3.1,"D",f3.1)') MASS,dulationT,integrationT
+    !Inconf_FILE_NAME="CONFIG/lastconf"
   else
-    write(Inconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number-1
+    !write(Inconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number-1
+    write(Inconf_FILE_NAME,'("CONFIG/config_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number-1
   endif
 
   open(unit=Inconf_FILE, file=Inconf_FILE_NAME, status='old', action='read',form='unformatted')
@@ -170,16 +178,18 @@ Fmat2=Fmat1
 call time_evolution(Xmat2,Vmat2,Fmat2,dulationT)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-write(Outconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number
+!write(Outconf_FILE_NAME,'("CONFIG/lastconfig_",i4.4)') job_number
+write(Outconf_FILE_NAME,'("CONFIG/config_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number
 !write(Xmat_FILE_NAME,'("OUTPUT/Xint_",i4.4)') job_number
 !write(Vmat_FILE_NAME,'("OUTPUT/Vint_",i4.4)') job_number
 !write(Fmat_FILE_NAME,'("OUTPUT/Fint_",i4.4)') job_number
 !write(Xmode_FILE_NAME,'("OUTPUT/Xmode_",i4.4)') job_number
 !write(Vmode_FILE_NAME,'("OUTPUT/Vmode_",i4.4)') job_number
 !write(Fmode_FILE_NAME,'("OUTPUT/Fmode_",i4.4)') job_number
-write(MXX_FILE_NAME,'("OUTPUT/MXX_",i4.4)') job_number
-write(MVV_FILE_NAME,'("OUTPUT/MVV_",i4.4)') job_number
-write(MFF_FILE_NAME,'("OUTPUT/MFF_",i4.4)') job_number
+! MXX_t1.0D1.0_0001
+write(MXX_FILE_NAME,'("OUTPUT/MXX_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number
+write(MVV_FILE_NAME,'("OUTPUT/MVV_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number
+write(MFF_FILE_NAME,'("OUTPUT/MFF_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number
 end subroutine set_initial
 
 
@@ -409,8 +419,9 @@ write(FILE_NUM,FMT1,advance='no') time
 do j=1,matrix_size
   do i=1,matrix_size
     !write(FILE_NUM,'(E12.5,2X,E12.5,2x)',advance='no') MAT(i,j,m)
-    write(FILE_NUM,FMT2,advance='no') MAT(i,j) - dconjg(vec2(i)) * dconjg(vec1(j))
+    write(FILE_NUM,FMT2,advance='no') MAT(i,j) - dconjg(vec2(i)) * (vec1(j))
   enddo
+  !write(*,*) mat(j,j), matrix_size
 enddo
 write(FILE_NUM,*)
 

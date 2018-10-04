@@ -1,7 +1,7 @@
 #! /usr/local/intelpython3/bin/python
 import numpy as np
 
-ver="0002"
+ver="0000"
 D="1.0"
 t="0.0"
 

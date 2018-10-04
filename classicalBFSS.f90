@@ -30,6 +30,9 @@ double precision :: time, Ham0, Ham1
 
 integer :: i,j,m,n,k,ii,jj,nn,ele_I,ele_J, counter
 character(128) OUT_FMT
+character(128) LASTCONF_FILE_NAME
+character(128) command
+
 
 !! read parameter and input files
 call set_parameters
@@ -159,11 +162,14 @@ write(Outconf_FILE) Xmat1
 write(Outconf_FILE) Vmat1
 close(Outconf_FILE)
 
-call system('&
-  cd CONFIG; &
-  FILE=$(ls lastconfig_* | tail -1); &
-  LINK="lastconf"; if [ -e "$LINK" ]; then /bin/rm $LINK; &
-  fi; ln -s $FILE $LINK')
+write(Outconf_FILE_NAME,'("config_M",f3.1,"t",f3.1,"D",f3.1,"_",i4.4)') MASS,dulationT,integrationT,job_number
+write(LASTCONF_FILE_NAME,'("lastconf_M",f3.1,"t",f3.1,"D",f3.1)') MASS,dulationT,integrationT
+command="cd CONFIG; ln -sf " // trim(Outconf_FILE_NAME) //  " " // trim(LASTCONF_FILE_NAME)
+call system(command)
+!"&
+  !cd CONFIG; &
+  !FILE=$(ls " Outconf_FILE_NAME "); &
+  !fi; ln -s $FILE "LASTCONF_FILE_NAME")
 
 
 end program main
