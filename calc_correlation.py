@@ -11,13 +11,13 @@ matrix_size = DIM*NMAT*NMAT
 ##############
 XVF="X"
 ver="0000"
-delay_time="0.0"  # delay time
+delay_time="0.0"  # delay time ("t" in the note)
 Delta="2.0"  # range of integration
 
 deltaT=1.0  # time step of the input data (in OUTPUT)
 ##############
-INPUT_FILE="OUTPUT/" + XVF + "mat_" + ver
-SV_FILE="SV/sv" + ver + "_" + XVF + "mat_t" + delay_time + "D" + Delta
+INPUT_FILE="OUTPUT/M_" + XVF + XVF + "t" + delay_time + "D" + Delta + "_" + ver
+SV_FILE="SV/sv_" + XVF + "_t" + delay_time + "D" + Delta + "_" + ver
 
 # Count lines (the first line is a comment)
 num_lines = sum(1 for line in open(INPUT_FILE) )

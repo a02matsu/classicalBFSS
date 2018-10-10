@@ -1,13 +1,14 @@
 #! /usr/local/intelpython3/bin/python
 import numpy as np
 
-ver="0000"
-D="1.0"
+M="0.0"
 t="0.0"
+D="0.5"
+ver="0001"
 
-XFILE="SV/sv" + ver + "_Xmat_t" + t +"D" + D 
-VFILE="SV/sv" + ver + "_Vmat_t" + t +"D" + D 
-FFILE="SV/sv" + ver + "_Fmat_t" + t +"D" + D 
+XFILE="SV/sv_X_M" + M + "t" + t +"D" + D + "_" + ver
+VFILE="SV/sv_V_M" + M + "t" + t +"D" + D + "_" + ver
+FFILE="SV/sv_F_M" + M + "t" + t +"D" + D + "_" + ver
 
 print( XFILE )
 

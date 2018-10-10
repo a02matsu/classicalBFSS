@@ -6,17 +6,17 @@ import csv
 
 NMAT=4
 DIM=9
-MASS=0.0
 matrix_size = DIM*NMAT*NMAT
 ##############
 #XVF="X"
-ver="0000"
-delay_time="0.0"  # delay time
-Delta="1.0"
+ver="0001"
+MASS="0.0"
+delay_time="0.0"  # delay time ("t" in the note)
+Delta="0.5"
 ##############
 for XVF in ["X","V","F"]:
-    INPUT_FILE="OUTPUT/M" + XVF + XVF + "_" + ver
-    SV_FILE="SV/sv" + ver + "_" + XVF + "mat_t" + delay_time + "D" + Delta
+    INPUT_FILE="OUTPUT/M" + XVF + XVF + "_M" + MASS + "t" + delay_time + "D" + Delta + "_" + ver
+    SV_FILE="SV/sv" + "_" + XVF + "_M" + MASS + "t" + delay_time + "D" + Delta + "_" + ver
 
     # Count lines (the first line is a comment)
     num_lines = sum(1 for line in open(INPUT_FILE) )
